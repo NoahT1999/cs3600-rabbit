@@ -69,6 +69,66 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["add_person"])){
   $check_unused->close();
   $conn->close();
 } 
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["modify_person"])){
+  $id = strtolower($_POST['modify_personnel_id']);
+  $type = strtolower($_POST['modify_personnel_type']);
+  $first = strtolower($_POST["first_name"]);
+  $last = strtolower($_POST["last_name"]);
+
+  include 'database/db_connection.php';
+  $check_unused = $conn->prepare("SELECT first_name,last_name FROM ".$type." where id=?");
+  $check_unused->bind_param("s",$id);
+  try{
+    if($check_unused->execute()){
+      $result = $check_unused->get_result();
+      $data = $result->fetch_assoc();
+
+      
+      if(!empty($data)){
+        // Dynammically decides which values to update.
+        $fields = array(
+          array($first,'first_name','s'),
+          array($last,'last_name','s')
+        );
+        $updated = "";
+        $format = "";
+        $values = [];
+        foreach($fields as $field){
+          if(isset($field[0]) && !empty($field[0])){
+            $updated = $updated.$field[1]."=?,";
+            $format = $format.$field[2];
+            $values[] = $field[0];
+          }
+        }
+        if(isset($updated) && !empty($updated)){ // Ensures at least one value will be updated
+          $updated = substr($updated,0,-1);
+          $stmt = $conn->prepare('UPDATE '.$type.' SET '.$updated.' WHERE id=?');
+          $values[] = $id; // Appends id to list of values so it can be unpacked.
+          $stmt->bind_param($format."s",...$values);
+          if($stmt->execute()){
+            $message = "Successfully updated database.";
+            $error_type = 0;
+          } else {
+            $message = "Error: ".$stmt->error;
+            $error_type = 1;
+          }
+          $stmt->close();
+        }
+      } else {
+        $message = "ID not found. Perform search by id again.";
+        $error_type = 1;
+      }
+    } else {
+      $message = "Error: ".$stmt->error;
+      $error_type = 1;
+    }
+    $check_unused->close();
+  } catch (Exception $e){
+    $message = "Unknown error while updating database.";
+    $error_type = 1;    
+  }
+  $conn->close();
+} 
 ?>
 
 <!DOCTYPE html>
@@ -140,6 +200,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["add_person"])){
       if(isset($person)){
         if(!empty($person)){
           echo '<p>'.ucfirst($person['first_name']).' '.ucfirst($person['last_name']).'</p>';
+          echo '<form method="POST">';
+            echo '<div>';
+              echo '<label for="first_name">First Name: </label>';
+              echo '<input type="text" name="first_name" id="first_name" class="text-input-small" placeholder="John" maxlength="45"/>';
+            echo '</div>';
+            echo '<div>';
+              echo '<label for="last_name">Last Name: </label>';
+              echo '<input type="text" name="last_name" id="last_name" class="text-input-small" placeholder="Doe" maxlength="45"/>';
+            echo '</div>';
+            echo '<div>';
+            echo '<input type="hidden" name="modify_personnel_id" id="modify_personnel_id" value="'.$id.'"/>';
+            echo '<input type="hidden" name="modify_personnel_type" id="modify_personnel_type" value="'.$type.'"/>';
+            echo '</div>';
+            echo '<div>';
+              echo '<button type="submit" name="modify_person" class="styled-button submit-button">Modify</button>';
+            echo '</div>';
+          echo '</form>';
         } else {
           echo '<p>No results found.</p>';
           echo '<form method="POST">';
