@@ -76,6 +76,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["modify_person"])){
   $last = strtolower($_POST["last_name"]);
 
   include 'database/db_connection.php';
+  // Check if the id is already in the database. If not, do not attempt update.
   $check_unused = $conn->prepare("SELECT first_name,last_name FROM ".$type." where id=?");
   $check_unused->bind_param("s",$id);
   try{
@@ -86,13 +87,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["modify_person"])){
       
       if(!empty($data)){
         // Dynammically decides which values to update.
-        $fields = array(
+        $fields = array( // Stores each field that can be updated. May need to be split between types
           array($first,'first_name','s'),
           array($last,'last_name','s')
         );
-        $updated = "";
-        $format = "";
-        $values = [];
+        $updated = ""; // SQL query string of which columns to update
+        $format = ""; // Format specifiers for bind_param
+        $values = []; // Variables holding values for bind_param.
         foreach($fields as $field){
           if(isset($field[0]) && !empty($field[0])){
             $updated = $updated.$field[1]."=?,";
@@ -140,7 +141,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["modify_person"])){
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Budgets Overview</title>
+    <title>Personnel Management</title>
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="./CSS/style.css">
@@ -159,7 +160,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["modify_person"])){
           </a>
         </div>
         <ul class="navigation-menu">
-          <a href="./budgets.php" class="menu-item active">
+          <a href="./dashboard.php" class="menu-item active">
             <li class="underline-hover-effect">Budgets</li>
           </a>
           <a href="./database/logout.php" class="menu-item">
@@ -178,7 +179,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["modify_person"])){
       <p>personnel-management</p>
     </div>
     <div class="content">
-      <h1>Budgets</h1>
+      <h1>Personnel</h1>
       <div id="submission-message-holder"><p></p></div>
       <form method="get">
         <div>

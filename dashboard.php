@@ -55,7 +55,7 @@ if (!isset($_SESSION['user'])) {
           </a>
         </div>
         <ul class="navigation-menu">
-          <a href="./budgets.php" class="menu-item active">
+          <a href="./dashboard.php" class="menu-item active">
             <li class="underline-hover-effect">Budgets</li>
           </a>
           <a href="./database/logout.php" class="menu-item">
@@ -89,7 +89,7 @@ if (!isset($_SESSION['user'])) {
   </body>
   <footer>
     <div class="split-items">
-      <p>Last updated: <span>23 October 2025</span></p>
+      <p>Last updated: <span>25 October 2025</span></p>
       <p>Author: Josh Gillum</p>
     </div>
     <div class="split-items">
