@@ -58,12 +58,20 @@ if (!isset($_SESSION['user'])) {
           <a href="./dashboard.php" class="menu-item active">
             <li class="underline-hover-effect">Budgets</li>
           </a>
-          <a href="./database/logout.php" class="menu-item">
-            <li class="underline-hover-effect">Logout</li>
+          <a href="./personnel.php" class="menu-item">
+            <li class="underline-hover-effect">Personnel</li>
           </a>
-          <a href="./database/delete_account.php" class="menu-item">
-            <li class="underline-hover-effect error">Delete Account</li>
-          </a>
+          <div class="menu-item dropdown login">
+            <li class="underline-hover-effect">Account</li>
+            <div class="dropdown-content">
+              <ul>
+                <li><a href="./database/manage_account.php" class="menu-item">Manage</a></li>
+                <li><a href="./database/logout.php" class="menu-item">Logout</a></li>
+                <hr>
+                <li><a href="./database/delete_account.php" class="menu-item error">Delete&nbspAccount</a></li>
+              </ul>
+            </div>
+          </div>
         </ul>
       </div>
       <hr id="head-rule">

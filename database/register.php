@@ -91,15 +91,25 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
               echo '<li class="underline-hover-effect">Register</li>';
             echo '</a>';
           } else {
-            echo '<a href="../dashboard.php" class="menu-item">';
-              echo '<li class="underline-hover-effect">Budgets</li>';
-            echo '</a>';
-            echo '<a href="./logout.php" class="menu-item">';
-              echo '<li class="underline-hover-effect">Logout</li>';
-            echo '</a>';
-            echo '<a href="./delete_account.php" class="menu-item">';
-              echo '<li class="underline-hover-effect error">Delete Account</li>';
-            echo '</a>';
+            echo '<ul class="navigation-menu">';
+              echo '<a href="./dashboard.php" class="menu-item">';
+                echo '<li class="underline-hover-effect">Budgets</li>';
+              echo '</a>';
+              echo '<a href="./personnel.php" class="menu-item">';
+                echo '<li class="underline-hover-effect">Personnel</li>';
+              echo '</a>';
+              echo '<div class="menu-item dropdown login">';
+                echo '<li class="underline-hover-effect">Account</li>';
+                echo '<div class="dropdown-content">';
+                  echo '<ul>';
+                    echo '<li><a href="./database/manage_account.php" class="menu-item">Manage</a></li>';
+                    echo '<li><a href="./database/logout.php" class="menu-item">Logout</a></li>';
+                    echo '<hr>';
+                    echo '<li><a href="./database/delete_account.php" class="menu-item error">Delete&nbspAccount</a></li>';
+                  echo '</ul>';
+                echo '</div>';
+              echo '</div>';
+            echo '</ul>';
           }
           ?>
         </ul>
@@ -157,7 +167,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST") {
   </body>
   <footer>
     <div class="split-items">
-      <p>Last updated: <span>23 October 2025</span></p>
+      <p>Last updated: <span>25 October 2025</span></p>
       <p>Author: Josh Gillum</p>
     </div>
     <div class="split-items">

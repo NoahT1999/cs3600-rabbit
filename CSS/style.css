@@ -408,6 +408,21 @@ code {
   position:relative;
 }
 
+.dropdown-content ul {
+  list-style: none;
+  margin-left:0px;
+  padding-left:0px;
+}
+
+.dropdown-content li{
+  position: relative;
+  margin: 0.25em 0.5em;
+}
+
+.dropdown-content a:hover {
+  text-decoration: underline;
+}
+
 .dropdown-content {
   display:none;
   position:absolute;

@@ -1,4 +1,5 @@
 <?php
+session_start();
 function write_to_console($data) {
  $console = $data;
  if (is_array($console))
@@ -36,87 +37,31 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET["fetch_personnel_info"]))
   $conn->close();
 }
 
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["add_person"])){
-  $id = strtolower($_POST['add_personnel_id']);
-  $type = strtolower($_POST['add_personnel_type']);
-  $first = strtolower($_POST["first_name"]);
-  $last = strtolower($_POST["last_name"]);
+if(isset($_SESSION['user'])){
+  if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["add_person"])){
+    $id = strtolower($_POST['add_personnel_id']);
+    $type = strtolower($_POST['add_personnel_type']);
+    $first = strtolower($_POST["first_name"]);
+    $last = strtolower($_POST["last_name"]);
 
-  include 'database/db_connection.php';
-  $check_unused = $conn->prepare("SELECT id FROM ".$type." where id=?");
-  $check_unused->bind_param("s",$id);
-  if($check_unused->execute()){
-    $check_unused->store_result();
-    if($check_unused->num_rows == 0){
-      $stmt = $conn->prepare("INSERT INTO ".$type." (id,first_name,last_name) VALUES (?, ?, ?)");
-      $stmt->bind_param("sss",$id,$first,$last);
-      if($stmt->execute()){
-        $message = "Successfully updated database.";
-        $error_type = 0;
-      } else {
-        $message = "Error: ".$stmt->error;
-        $error_type = 1;
-      }
-      $stmt->close();
-    } else {
-      $message = "Duplicate id found. Perform search by id again.";
-      $error_type = 1;
-    }
-  } else {
-    $message = "Error: ".$stmt->error;
-    $error_type = 1;
-  }
-  $check_unused->close();
-  $conn->close();
-} 
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["modify_person"])){
-  $id = strtolower($_POST['modify_personnel_id']);
-  $type = strtolower($_POST['modify_personnel_type']);
-  $first = strtolower($_POST["first_name"]);
-  $last = strtolower($_POST["last_name"]);
-
-  include 'database/db_connection.php';
-  // Check if the id is already in the database. If not, do not attempt update.
-  $check_unused = $conn->prepare("SELECT first_name,last_name FROM ".$type." where id=?");
-  $check_unused->bind_param("s",$id);
-  try{
+    include 'database/db_connection.php';
+    $check_unused = $conn->prepare("SELECT id FROM ".$type." where id=?");
+    $check_unused->bind_param("s",$id);
     if($check_unused->execute()){
-      $result = $check_unused->get_result();
-      $data = $result->fetch_assoc();
-
-      
-      if(!empty($data)){
-        // Dynammically decides which values to update.
-        $fields = array( // Stores each field that can be updated. May need to be split between types
-          array($first,'first_name','s'),
-          array($last,'last_name','s')
-        );
-        $updated = ""; // SQL query string of which columns to update
-        $format = ""; // Format specifiers for bind_param
-        $values = []; // Variables holding values for bind_param.
-        foreach($fields as $field){
-          if(isset($field[0]) && !empty($field[0])){
-            $updated = $updated.$field[1]."=?,";
-            $format = $format.$field[2];
-            $values[] = $field[0];
-          }
+      $check_unused->store_result();
+      if($check_unused->num_rows == 0){
+        $stmt = $conn->prepare("INSERT INTO ".$type." (id,first_name,last_name) VALUES (?, ?, ?)");
+        $stmt->bind_param("sss",$id,$first,$last);
+        if($stmt->execute()){
+          $message = "Successfully updated database.";
+          $error_type = 0;
+        } else {
+          $message = "Error: ".$stmt->error;
+          $error_type = 1;
         }
-        if(isset($updated) && !empty($updated)){ // Ensures at least one value will be updated
-          $updated = substr($updated,0,-1);
-          $stmt = $conn->prepare('UPDATE '.$type.' SET '.$updated.' WHERE id=?');
-          $values[] = $id; // Appends id to list of values so it can be unpacked.
-          $stmt->bind_param($format."s",...$values);
-          if($stmt->execute()){
-            $message = "Successfully updated database.";
-            $error_type = 0;
-          } else {
-            $message = "Error: ".$stmt->error;
-            $error_type = 1;
-          }
-          $stmt->close();
-        }
+        $stmt->close();
       } else {
-        $message = "ID not found. Perform search by id again.";
+        $message = "Duplicate id found. Perform search by id again.";
         $error_type = 1;
       }
     } else {
@@ -124,11 +69,69 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["modify_person"])){
       $error_type = 1;
     }
     $check_unused->close();
-  } catch (Exception $e){
-    $message = "Unknown error while updating database.";
-    $error_type = 1;    
+    $conn->close();
+  } 
+  if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["modify_person"])){
+    $id = strtolower($_POST['modify_personnel_id']);
+    $type = strtolower($_POST['modify_personnel_type']);
+    $first = strtolower($_POST["first_name"]);
+    $last = strtolower($_POST["last_name"]);
+
+    include 'database/db_connection.php';
+    // Check if the id is already in the database. If not, do not attempt update.
+    $check_unused = $conn->prepare("SELECT first_name,last_name FROM ".$type." where id=?");
+    $check_unused->bind_param("s",$id);
+    try{
+      if($check_unused->execute()){
+        $result = $check_unused->get_result();
+        $data = $result->fetch_assoc();
+
+        
+        if(!empty($data)){
+          // Dynammically decides which values to update.
+          $fields = array( // Stores each field that can be updated. May need to be split between types
+            array($first,'first_name','s'),
+            array($last,'last_name','s')
+          );
+          $updated = ""; // SQL query string of which columns to update
+          $format = ""; // Format specifiers for bind_param
+          $values = []; // Variables holding values for bind_param.
+          foreach($fields as $field){
+            if(isset($field[0]) && !empty($field[0])){
+              $updated = $updated.$field[1]."=?,";
+              $format = $format.$field[2];
+              $values[] = $field[0];
+            }
+          }
+          if(isset($updated) && !empty($updated)){ // Ensures at least one value will be updated
+            $updated = substr($updated,0,-1);
+            $stmt = $conn->prepare('UPDATE '.$type.' SET '.$updated.' WHERE id=?');
+            $values[] = $id; // Appends id to list of values so it can be unpacked.
+            $stmt->bind_param($format."s",...$values);
+            if($stmt->execute()){
+              $message = "Successfully updated database.";
+              $error_type = 0;
+            } else {
+              $message = "Error: ".$stmt->error;
+              $error_type = 1;
+            }
+            $stmt->close();
+          }
+        } else {
+          $message = "ID not found. Perform search by id again.";
+          $error_type = 1;
+        }
+      } else {
+        $message = "Error: ".$stmt->error;
+        $error_type = 1;
+      }
+      $check_unused->close();
+    } catch (Exception $e){
+      $message = "Unknown error while updating database.";
+      $error_type = 1;    
+    }
+    $conn->close();
   }
-  $conn->close();
 } 
 ?>
 
@@ -160,15 +163,40 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["modify_person"])){
           </a>
         </div>
         <ul class="navigation-menu">
-          <a href="./dashboard.php" class="menu-item active">
-            <li class="underline-hover-effect">Budgets</li>
-          </a>
-          <a href="./database/logout.php" class="menu-item">
-            <li class="underline-hover-effect">Logout</li>
-          </a>
-          <a href="./database/delete_account.php" class="menu-item">
-            <li class="underline-hover-effect error">Delete Account</li>
-          </a>
+          <?php
+          // Check if user is logged in, if not redirect to login page
+          if (!isset($_SESSION['user'])) {
+            echo '<a href="./personnel.php" class="menu-item active">';
+              echo '<li class="underline-hover-effect">Personnel</li>';
+            echo '</a>';
+            echo '<a href="./database/login.php" class="menu-item">';
+              echo '<li class="underline-hover-effect">Login</li>';
+            echo '</a>';
+            echo '<a href="./database/register.php" class="menu-item">';
+              echo '<li class="underline-hover-effect">Register</li>';
+            echo '</a>';
+          } else {
+            echo '<ul class="navigation-menu">';
+              echo '<a href="./dashboard.php" class="menu-item">';
+                echo '<li class="underline-hover-effect">Budgets</li>';
+              echo '</a>';
+              echo '<a href="./personnel.php" class="menu-item active">';
+                echo '<li class="underline-hover-effect">Personnel</li>';
+              echo '</a>';
+              echo '<div class="menu-item dropdown login">';
+                echo '<li class="underline-hover-effect">Account</li>';
+                echo '<div class="dropdown-content">';
+                  echo '<ul>';
+                    echo '<li><a href="./database/manage_account.php" class="menu-item">Manage</a></li>';
+                    echo '<li><a href="./database/logout.php" class="menu-item">Logout</a></li>';
+                    echo '<hr>';
+                    echo '<li><a href="./database/delete_account.php" class="menu-item error">Delete&nbspAccount</a></li>';
+                  echo '</ul>';
+                echo '</div>';
+              echo '</div>';
+            echo '</ul>';
+          }
+          ?>
         </ul>
       </div>
       <hr id="head-rule">
@@ -201,42 +229,46 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["modify_person"])){
       if(isset($person)){
         if(!empty($person)){
           echo '<p>'.ucfirst($person['first_name']).' '.ucfirst($person['last_name']).'</p>';
-          echo '<form method="POST">';
-            echo '<div>';
-              echo '<label for="first_name">First Name: </label>';
-              echo '<input type="text" name="first_name" id="first_name" class="text-input-small" placeholder="John" maxlength="45"/>';
-            echo '</div>';
-            echo '<div>';
-              echo '<label for="last_name">Last Name: </label>';
-              echo '<input type="text" name="last_name" id="last_name" class="text-input-small" placeholder="Doe" maxlength="45"/>';
-            echo '</div>';
-            echo '<div>';
-            echo '<input type="hidden" name="modify_personnel_id" id="modify_personnel_id" value="'.$id.'"/>';
-            echo '<input type="hidden" name="modify_personnel_type" id="modify_personnel_type" value="'.$type.'"/>';
-            echo '</div>';
-            echo '<div>';
-              echo '<button type="submit" name="modify_person" class="styled-button submit-button">Modify</button>';
-            echo '</div>';
-          echo '</form>';
+          if(isset($_SESSION['user'])){
+            echo '<form method="POST">';
+              echo '<div>';
+                echo '<label for="first_name">First Name: </label>';
+                echo '<input type="text" name="first_name" id="first_name" class="text-input-small" placeholder="John" maxlength="45"/>';
+              echo '</div>';
+              echo '<div>';
+                echo '<label for="last_name">Last Name: </label>';
+                echo '<input type="text" name="last_name" id="last_name" class="text-input-small" placeholder="Doe" maxlength="45"/>';
+              echo '</div>';
+              echo '<div>';
+              echo '<input type="hidden" name="modify_personnel_id" id="modify_personnel_id" value="'.$id.'"/>';
+              echo '<input type="hidden" name="modify_personnel_type" id="modify_personnel_type" value="'.$type.'"/>';
+              echo '</div>';
+              echo '<div>';
+                echo '<button type="submit" name="modify_person" class="styled-button submit-button">Modify</button>';
+              echo '</div>';
+            echo '</form>';
+          }
         } else {
           echo '<p>No results found.</p>';
-          echo '<form method="POST">';
-            echo '<div>';
-              echo '<label for="first_name">First Name: </label>';
-              echo '<input type="text" name="first_name" id="first_name" class="text-input-small" required placeholder="John" maxlength="45"/>';
-            echo '</div>';
-            echo '<div>';
-              echo '<label for="last_name">Last Name: </label>';
-              echo '<input type="text" name="last_name" id="last_name" class="text-input-small" required placeholder="Doe" maxlength="45"/>';
-            echo '</div>';
-            echo '<div>';
-            echo '<input type="hidden" name="add_personnel_id" id="add_personnel_id" value="'.$id.'"/>';
-            echo '<input type="hidden" name="add_personnel_type" id="add_personnel_type" value="'.$type.'"/>';
-            echo '</div>';
-            echo '<div>';
-              echo '<button type="submit" name="add_person" class="styled-button submit-button">Add</button>';
-            echo '</div>';
-          echo '</form>';
+          if(isset($_SESSION['user'])){
+            echo '<form method="POST">';
+              echo '<div>';
+                echo '<label for="first_name">First Name: </label>';
+                echo '<input type="text" name="first_name" id="first_name" class="text-input-small" required placeholder="John" maxlength="45"/>';
+              echo '</div>';
+              echo '<div>';
+                echo '<label for="last_name">Last Name: </label>';
+                echo '<input type="text" name="last_name" id="last_name" class="text-input-small" required placeholder="Doe" maxlength="45"/>';
+              echo '</div>';
+              echo '<div>';
+              echo '<input type="hidden" name="add_personnel_id" id="add_personnel_id" value="'.$id.'"/>';
+              echo '<input type="hidden" name="add_personnel_type" id="add_personnel_type" value="'.$type.'"/>';
+              echo '</div>';
+              echo '<div>';
+                echo '<button type="submit" name="add_person" class="styled-button submit-button">Add</button>';
+              echo '</div>';
+            echo '</form>';
+          }
         }
       }
       ?>
