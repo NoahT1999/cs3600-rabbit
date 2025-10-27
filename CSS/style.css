@@ -2,6 +2,7 @@
     --primary-color: #302AE6;
     --secondary-color: #536390;
     --font-color: #0d0d0d;
+    --font-color-highlight: #072446;
     --font-color-opposite: #f6f6f6;
     --bg-color: #ffffff;
     --bg-color-alternate: #cccccc;
@@ -18,6 +19,7 @@
     --primary-color: #9A97F3;
     --secondary-color: #818cab;
     --font-color: #f6f6f6;
+    --font-color-highlight: #b9d7f8;
     --font-color-opposite: #0d0d0d;
     --bg-color: #1a1a1a;
     --bg-color-alternate: #333333;
@@ -565,4 +567,8 @@ code {
 .tooltip:hover .tooltiptext {
   visibility: visible;
   opacity: 1;
+}
+
+.highlighted-text {
+  color: var(--font-color-highlight);
 }
