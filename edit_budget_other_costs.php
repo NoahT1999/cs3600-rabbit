@@ -151,7 +151,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_other_costs']) 
       include 'database/nav.php';
       navigation(isset($_SESSION['user']));
       include 'database/breadcrumb.php';
-      breadcrumbs(array(array("home","./index.php"),array("budgets","./dashboard.php"),array("edit-budget","./edit_budget.php"),array("other-costs","javascript:location.reload();")));
+      breadcrumbs(array(array("home","./index.php"),array("budgets","./dashboard.php"),array("edit-budget","./edit_budget.php?budget_id=".$budget_id),array("other-costs","javascript:location.reload();")));
     ?>
     <div class="content">
     <h1>Edit Budget Other Costs</h1>
