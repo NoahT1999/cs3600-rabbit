@@ -41,35 +41,10 @@ $budget_id = $_GET["budget_id"];
     <!--[if lt IE 7]>
       <p class="browsehappy">You are using an <strong>outdated</strong> browser. Please <a href="#">upgrade your browser</a> to improve your experience.</p>
     <![endif]-->
-    <div>
-      <div class="navigation-head">
-        <div class="site-logo">
-          <a href="./index.php">
-            <h1>RaBBiT</h1>
-          </a>
-        </div>
-        <ul class="navigation-menu">
-          <a href="./dashboard.php" class="menu-item">
-            <li class="underline-hover-effect">Budgets</li>
-          </a>
-          <a href="./personnel.php" class="menu-item">
-            <li class="underline-hover-effect">Personnel</li>
-          </a>
-          <div class="menu-item dropdown login">
-            <li class="underline-hover-effect">Account</li>
-            <div class="dropdown-content">
-              <ul>
-                <li><a href="./database/manage_account.php" class="menu-item">Manage</a></li>
-                <li><a href="./database/logout.php" class="menu-item">Logout</a></li>
-                <hr>
-                <li><a href="./database/delete_account.php" class="menu-item error">Delete&nbspAccount</a></li>
-              </ul>
-            </div>
-          </div>
-        </ul>
-      </div>
-      <hr id="head-rule">
-    </div>
+    <?php
+      include 'database/nav.php';
+      navigation(isset($_SESSION['user']));
+    ?>
     <div class="breadcrumbs">
       <a href="./index.php">home</a>
       <p>></p>
