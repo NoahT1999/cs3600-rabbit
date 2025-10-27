@@ -1,6 +1,6 @@
 <?php
-  function check_access($user_id,$budget_id){
-    include './db_connection.php';
+  function check_access($user_id,$budget_id,$to_root="./"){
+    include $to_root.'database/db_connection.php';
     $stmt = $conn->prepare("SELECT budget_id FROM budget_access WHERE user_id = ? AND budget_id = ?");
     $stmt->bind_param("ss", $user_id,$budget_id);
     $stmt->execute();
