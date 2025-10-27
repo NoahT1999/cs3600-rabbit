@@ -7,6 +7,7 @@ function write_to_console($data) {
 
  echo "<script>console.log('Console: " . $console . "' );</script>";
 }
+
 session_start();
 // Check if user is logged in, if not redirect to login page
 if (!isset($_SESSION['user'])) {
@@ -14,8 +15,54 @@ if (!isset($_SESSION['user'])) {
   exit();
 }
 
-$tab = $_GET["year"];
+$year = $_GET["year"];
 $budget_id = $_GET["budget_id"];
+$split = explode("-",$year);
+if($split[0] == "year"){
+  $year = $split[1];
+}
+$message = "";
+$error_type = 1;
+$invalid = 0;
+
+// Ensures that year and budget id are set in the url.
+if(isset($year) && isset($budget_id) && !empty($year) && !empty($budget_id)){
+  include './database/check_access.php';
+  $has_access = check_access($_SESSION['user'],$budget_id);
+  if(!$has_access){
+    $message = "Access denied.";
+    $invalid = 1;
+    $error_type = 1;
+  }
+} else {
+  $message = "Invalid referrel link.";
+  $error_type = 1;
+  $invalid = 1;
+}
+
+if (!$invalid){
+  include './database/db_connection.php';
+  $stmt = $conn->prepare("SELECT materials_and_supplies, small_equipment, publication, computer_services, software, facility_fees, conference_registration, other FROM budget_other_costs WHERE id=? and year=?");
+  $stmt->bind_param("ss",$year,$budget_id);
+  if($stmt->execute()){
+    $result = $stmt->get_result();
+    $data = $result->fetch_assoc();
+    if(!isset($data) || empty($data)){
+      $message = "Error: No entry found.";
+      $error_type = 1;
+      $invalid = 1;
+    }
+  } else {
+    $message = "Error: ".$stmt->error;
+    $error_type = 1;
+    $invalid = 1;
+  }
+}
+
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_other_costs']) && !$invalid){
+  write_to_console("Allowed");
+}
 
 
 
@@ -36,6 +83,7 @@ $budget_id = $_GET["budget_id"];
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="./CSS/style.css">
     <script src="./JS/title.js"></script>
+    <script src="./JS/message.js"></script>
   </head>
   <body>
     <!--[if lt IE 7]>
@@ -81,6 +129,73 @@ $budget_id = $_GET["budget_id"];
     </div>
     <div class="content">
     <h1>Edit Budget Other Costs</h1>
+    <div id="submission-message-holder"><p></p></div>
+    <?php
+    if (!$invalid){
+      echo '<form method="POST">';
+        echo '<div class="split-items">';
+          echo '<label for="materials_and_supplies" class="tooltip">Materials and Supplies: ';
+            echo '<span class="tooltiptext">Various materials and supplies. Added all together.</span>';
+          echo '</label>';
+          echo '<input type="text" name="materials_and_supplies" id="materials_and_supplies" class="text-input-small" placeholder="$'.$data['materials_and_supplies'].'" maxlength="45"/>';
+        echo '</div>';
+        echo '<div class="split-items">';
+          echo '<label for="small_equipment" class="tooltip">Small Equipment: ';
+            echo '<span class="tooltiptext">Any equipment or tools with individual values below $5,000.</span>';
+          echo '</label>';
+          echo '<input type="text" name="small_equipment" id="small_equipment" class="text-input-small" placeholder="$'.$data['small_equipment'].'" maxlength="45"/>';
+        echo '</div>';
+        echo '<div class="split-items">';
+          echo '<label for="publication" class="tooltip">Publication: ';
+            echo '<span class="tooltiptext">Costs for publishing papers or other documents.</span>';
+          echo '</label>';
+          echo '<input type="text" name="publication" id="publication" class="text-input-small" placeholder="$'.$data['publication'].'" maxlength="45"/>';
+        echo '</div>';
+        echo '<div class="split-items">';
+          echo '<label for="computer_services" class="tooltip">Computer Services: ';
+            echo '<span class="tooltiptext">Costs for various computer services such as IT.</span>';
+          echo '</label>';
+          echo '<input type="text" name="computer_services" id="computer_services" class="text-input-small" placeholder="$'.$data['computer_services'].'" maxlength="45"/>';
+        echo '</div>';
+        echo '<div class="split-items">';
+          echo '<label for="software" class="tooltip">Software: ';
+            echo '<span class="tooltiptext">Cost of software or other computer programs.</span>';
+          echo '</label>';
+          echo '<input type="text" name="software" id="software" class="text-input-small" placeholder="$'.$data['software'].'" maxlength="45"/>';
+        echo '</div>';
+        echo '<div class="split-items">';
+          echo '<label for="facility_fees" class="tooltip">Facility Fees: ';
+            echo '<span class="tooltiptext">Fees for renting out facilities or conference centers.</span>';
+          echo '</label>';
+          echo '<input type="text" name="facility_fees" id="facility_fees" class="text-input-small" placeholder="$'.$data['facility_fees'].'" maxlength="45"/>';
+        echo '</div>';
+        echo '<div class="split-items">';
+          echo '<label for="conference_registration" class="tooltip">Conference Registration Fees: ';
+            echo '<span class="tooltiptext">Ticket costs and fees for attending or hosting conferences.</span>';
+          echo '</label>';
+          echo '<input type="text" name="conference_registration" id="conference_registration" class="text-input-small" placeholder="$'.$data['conference_registration'].'" maxlength="45"/>';
+        echo '</div>';
+        echo '<div class="split-items">';
+          echo '<label for="other" class="tooltip">Other/Miscellaneous Costs: ';
+            echo '<span class="tooltiptext">Any extra costs or fees that do not fit in any other category.</span>';
+          echo '</label>';
+          echo '<input type="text" name="other" id="other" class="text-input-small" placeholder="$'.$data['other'].'" maxlength="45"/>';
+        echo '</div>';
+        echo '<div>';
+        echo '<input type="hidden" name="year" id="year" value="'.$year.'"/>';
+        echo '<input type="hidden" name="budget_id" id="budget_id" value="'.$budget_id.'"/>';
+        echo '</div>';
+        echo '<div>';
+          echo '<button type="submit" name="update_other_costs" class="styled-button submit-button">Modify</button>';
+        echo '</div>';
+      echo '</form>';
+    }
+    ?>
+    <?php
+      if(isset($message) && !empty($message)){
+        echo '<script>submissionMessage("'.$message.'",'.$error_type.');</script>';
+      }
+    ?>
     </div>
     <script src="" async defer></script>
     <hr id="foot-rule">
