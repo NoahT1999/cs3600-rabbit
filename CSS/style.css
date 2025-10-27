@@ -526,3 +526,15 @@ code {
 .text-input-small {
   width: 15em;
 }
+
+.overview-list {
+  list-style: none;
+}
+
+.overview-list a {
+  text-decoration: none;
+}
+
+.overview-list a:hover {
+  text-decoration: underline;
+}

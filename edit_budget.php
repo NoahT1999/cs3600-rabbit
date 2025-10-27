@@ -15,6 +15,7 @@ if (!isset($_SESSION['user'])) {
 }
 
 $tab = $_GET["year"];
+$budget_id = $_GET["budget_id"];
 
 
 
@@ -110,6 +111,16 @@ $tab = $_GET["year"];
           echo '<div id="'.$item[0].'" class="tabcontent">';
           echo '<div class="tab-title">';
           echo '<h3>'.$item[1].'</h3>';
+          echo '</div>';
+          echo '<div>';
+          echo '<ul class="overview-list">';
+            echo '<li><a href="edit_budget_personnel.php?year='.$item[0].'&budget_id='.$budget_id.'">Personnel</a></li>';
+            echo '<li><a href="edit_budget_other_personnel.php?year='.$item[0].'&budget_id='.$budget_id.'">Other Personnel</a></li>';
+            echo '<li><a href="edit_budget_fringe.php?year='.$item[0].'&budget_id='.$budget_id.'">Fringe</a></li>';
+            echo '<li><a href="edit_budget_equipment.php?year='.$item[0].'&budget_id='.$budget_id.'">Large Equipment</a></li>';
+            echo '<li><a href="edit_budget_travel.php?year='.$item[0].'&budget_id='.$budget_id.'">Travel</a></li>';
+            echo '<li><a href="edit_budget_other_costs.php?year='.$item[0].'&budget_id='.$budget_id.'">Other Costs</a></li>';
+          echo '</ul>';
           echo '</div>';
           echo '</div>';
         }
