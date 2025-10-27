@@ -25,7 +25,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             session_start();
             $_SESSION['user'] = $id;
             $_SESSION['username'] = $username;
-            header("Location: ../dashboard.php");
+            if(isset($_GET['send_back_to'])){
+              header("Location: ".$_GET['send_back_to']);
+            } else {
+              header("Location: ../dashboard.php");
+            }
             exit();
         } else {
             $message = "Incorrect password";
