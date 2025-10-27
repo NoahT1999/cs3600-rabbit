@@ -60,6 +60,11 @@ $updated_placeholders = [];
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_other_costs']) && !$invalid){
   $table = "budget_other_costs";
   include './database/format_numbers.php';
+  // $fields stores an array of fields in the database that can be updated.
+  // Index 0 - Explicitly define variable holding data. Set to NULL to fetch data from $_POST
+  //       1 - Name of column in the database
+  //       2 - Name of value in form
+  //       3 - Data type for updating database. 's' for string, 'i' for integer, etc.
   $fields = array( // Stores each field that can be updated.
     array(NULL,'materials_and_supplies','materials_and_supplies','s'),
     array(NULL,'small_equipment','small_equipment','s'),
@@ -95,7 +100,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_other_costs']) 
       }
     }
   }
-  if(!$invalid_number){
+  if(!$invalid_number){ // If all of the numbers were valid and acceptable
     if(isset($updated) && !empty($updated)){ // Ensures at least one value will be updated
       $updated = substr($updated,0,-1);
       $stmt = $conn->prepare('UPDATE '.$table.' SET '.$updated.' WHERE id=? AND year=?');
@@ -118,10 +123,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_other_costs']) 
     $updated_placeholders = [];
   }
 }
-
-
-
-
 ?>
 
 <!DOCTYPE html>
