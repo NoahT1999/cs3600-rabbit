@@ -19,7 +19,7 @@ if(!$invalid && !isset($budget_id)){
 
 if(!$invalid){
   include './check_access.php';
-  $has_access = check_access($_SESSION['user'],$budget_id);
+  $has_access = check_access($_SESSION['user'],$budget_id,$to_root="../");
   if(!$has_access){
     $message = "Access denied.";
     $invalid = 1;
@@ -99,7 +99,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['add_equipment']) && !$i
       include 'nav.php';
       navigation(isset($_SESSION['user']),$to_root="../");
       include 'breadcrumb.php';
-      breadcrumbs(array(array("home","../index.php"),array("budget","../edit_budget?budget_id=".$budget_id),array("add-equipment","javascript:location.reload();")));
+      breadcrumbs(array(array("home","../index.php"),array("budget","../edit_budget.php?budget_id=".$budget_id),array("add-equipment","javascript:location.reload();")));
     ?>
     <div class="content">
       <h1>Add Large Equipment</h1>
