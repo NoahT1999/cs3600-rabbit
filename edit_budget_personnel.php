@@ -44,16 +44,9 @@ $budget_id = $_GET["budget_id"];
     <?php
       include 'database/nav.php';
       navigation(isset($_SESSION['user']));
+      include 'database/breadcrumb.php';
+      breadcrumbs(array(array("home","./index.php"),array("budgets","./dashboard.php"),array("edit-budget","./edit_budget.php"),array("personnel","javascript:location.reload();")));
     ?>
-    <div class="breadcrumbs">
-      <a href="./index.php">home</a>
-      <p>></p>
-      <a href="./dashboard.php">budgets</a>
-      <p>></p>
-      <a href="./edit_budget.php">edit-budget</a>
-      <p>></p>
-      <p>personnel</p>
-    </div>
     <div class="content">
     <h1>Edit Budget Personnel</h1>
     </div>

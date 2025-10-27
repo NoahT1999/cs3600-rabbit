@@ -149,16 +149,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_other_costs']) 
     <?php
       include 'database/nav.php';
       navigation(isset($_SESSION['user']));
+      include 'database/breadcrumb.php';
+      breadcrumbs(array(array("home","./index.php"),array("budgets","./dashboard.php"),array("edit-budget","./edit_budget.php"),array("other-costs","javascript:location.reload();")));
     ?>
-    <div class="breadcrumbs">
-      <a href="./index.php">home</a>
-      <p>></p>
-      <a href="./dashboard.php">budgets</a>
-      <p>></p>
-      <a href="./edit_budget.php">edit-budget</a>
-      <p>></p>
-      <p>other-costs</p>
-    </div>
     <div class="content">
     <h1>Edit Budget Other Costs</h1>
     <div id="submission-message-holder"><p></p></div>

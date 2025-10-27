@@ -95,14 +95,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_budget'])){
     <?php
       include 'database/nav.php';
       navigation(isset($_SESSION['user']),$from_database=True);
+      include 'database/breadcrumb.php';
+      breadcrumbs(array(array("home","./index.php"),array("budgets","./dashboard.php"),array("create-budget","javascript:location.reload();")));
     ?>
-    <div class="breadcrumbs">
-      <a href="./index.php">home</a>
-      <p>></p>
-      <a href="./dashboard.php">budgets</a>
-      <p>></p>
-      <p>create-budget</p>
-    </div>
     <div class="content">
       <h1>Create New Budget</h1>
       <div id="submission-message-holder"><p></p></div>

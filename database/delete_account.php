@@ -53,12 +53,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_account'])) {
     <?php
       include 'nav.php';
       navigation(isset($_SESSION['user']),$from_database=True);
+      include 'breadcrumb.php';
+      breadcrumbs(array(array("home","../index.php"),array("delete-account","javascript:location.reload();")));
     ?>
-    <div class="breadcrumbs">
-      <a href="../index.php">home</a>
-      <p>></p>
-      <p>delete-account</p>
-    </div>
     <div class="content">
       <?php
       echo '<h1>Delete Account</h1>';

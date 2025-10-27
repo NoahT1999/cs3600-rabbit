@@ -160,6 +160,7 @@ a {
 
 .breadcrumbs p{
     display:inline;
+  margin: auto 0.25em;
 }
 
 .projects {

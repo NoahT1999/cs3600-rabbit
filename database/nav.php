@@ -24,7 +24,7 @@ function navigation($logged_in=True,$from_database=False){
             echo '</ul>';
           echo '</div>';
         echo '</div>';
-        echo '<a href='.$to_root.'"personnel.php" class="menu-item">';
+        echo '<a href="'.$to_root.'personnel.php" class="menu-item">';
           echo '<li class="underline-hover-effect">Personnel</li>';
         echo '</a>';
         echo '<div class="menu-item dropdown login">';

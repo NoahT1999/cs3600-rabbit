@@ -62,12 +62,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <?php
       include 'nav.php';
       navigation(isset($_SESSION['user']),$from_database=True);
+      include 'breadcrumb.php';
+      breadcrumbs(array(array("home","../index.php"),array("login","javascript:location.reload();")));
     ?>
-    <div class="breadcrumbs">
-      <a href="../index.php">home</a>
-      <p>></p>
-      <p>login</p>
-    </div>
     <div class="content">
       <h1>Login</h1>
       <div id="submission-message-holder"><p></p></div>
