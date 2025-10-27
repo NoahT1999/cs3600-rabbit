@@ -17,6 +17,12 @@ if (!isset($_SESSION['user'])) {
 $tab = $_GET["year"];
 $budget_id = $_GET["budget_id"];
 
+include './database/check_access.php';
+$has_access = check_access($_SESSION['user'],$budget_id);
+if(!$has_access){
+  $message = "Access denied.";
+  $error_type = 1;
+}
 
 
 
@@ -37,6 +43,7 @@ $budget_id = $_GET["budget_id"];
     <link rel="stylesheet" href="./CSS/style.css">
     <script src="./JS/title.js"></script>
     <script src="./JS/tabs.js"></script>
+    <script src="./JS/message.js"></script>
   </head>
   <body>
     <!--[if lt IE 7]>
@@ -79,52 +86,60 @@ $budget_id = $_GET["budget_id"];
       <p>edit-budget</p>
     </div>
     <div class="content">
-      <div class="tab">
-        <div class="tab-buttons">
-          <?php
-          $names = array(
-            array("year-1","Year 1"),
-            array("year-2","Year 2"),
-            array("year-3","Year 3"),
-            array("year-4","Year 4"),
-            array("year-5","Year 5")
-          ); 
-              if(!isset($tab)){
-                $tab="year-1";
-              }
-
-              foreach($names as $item){
-                $prefix = '<button class="tablinks"';
-                $middle = '';
-                $suffix = ' onclick="openTab(event,\''.$item[0].'\')">'.$item[1].'</button>';
-                if($tab == $item[0]){
-                  $middle = ' id="defaultOpen"';
+      <h1>Edit Budget</h1>
+      <div id="submission-message-holder"><p></p></div>
+        <?php
+        if($has_access){
+          echo '<div class="tab">';
+            echo '<div class="tab-buttons">';
+            $names = array(
+              array("year-1","Year 1"),
+              array("year-2","Year 2"),
+              array("year-3","Year 3"),
+              array("year-4","Year 4"),
+              array("year-5","Year 5")
+            ); 
+                if(!isset($tab)){
+                  $tab="year-1";
                 }
-                echo $prefix.$middle.$suffix;
-          }
-        echo '</div>';
-        echo '<!-- Tab content -->';
-        
+
+                foreach($names as $item){
+                  $prefix = '<button class="tablinks"';
+                  $middle = '';
+                  $suffix = ' onclick="openTab(event,\''.$item[0].'\')">'.$item[1].'</button>';
+                  if($tab == $item[0]){
+                    $middle = ' id="defaultOpen"';
+                  }
+                  echo $prefix.$middle.$suffix;
+            }
+          echo '</div>';
+          echo '<!-- Tab content -->';
+          
 
 
-        foreach($names as $item){
-          echo '<div id="'.$item[0].'" class="tabcontent">';
-          echo '<div class="tab-title">';
-          echo '<h3>'.$item[1].'</h3>';
-          echo '</div>';
-          echo '<div>';
-          echo '<ul class="overview-list">';
-            echo '<li><a href="edit_budget_personnel.php?year='.$item[0].'&budget_id='.$budget_id.'">Personnel</a></li>';
-            echo '<li><a href="edit_budget_other_personnel.php?year='.$item[0].'&budget_id='.$budget_id.'">Other Personnel</a></li>';
-            echo '<li><a href="edit_budget_fringe.php?year='.$item[0].'&budget_id='.$budget_id.'">Fringe</a></li>';
-            echo '<li><a href="edit_budget_equipment.php?year='.$item[0].'&budget_id='.$budget_id.'">Large Equipment</a></li>';
-            echo '<li><a href="edit_budget_travel.php?year='.$item[0].'&budget_id='.$budget_id.'">Travel</a></li>';
-            echo '<li><a href="edit_budget_other_costs.php?year='.$item[0].'&budget_id='.$budget_id.'">Other Costs</a></li>';
-          echo '</ul>';
-          echo '</div>';
-          echo '</div>';
+          foreach($names as $item){
+            echo '<div id="'.$item[0].'" class="tabcontent">';
+            echo '<div class="tab-title">';
+            echo '<h3>'.$item[1].'</h3>';
+            echo '</div>';
+            echo '<div>';
+            echo '<ul class="overview-list">';
+              echo '<li><a href="edit_budget_personnel.php?year='.$item[0].'&budget_id='.$budget_id.'">Personnel</a></li>';
+              echo '<li><a href="edit_budget_other_personnel.php?year='.$item[0].'&budget_id='.$budget_id.'">Other Personnel</a></li>';
+              echo '<li><a href="edit_budget_fringe.php?year='.$item[0].'&budget_id='.$budget_id.'">Fringe</a></li>';
+              echo '<li><a href="edit_budget_equipment.php?year='.$item[0].'&budget_id='.$budget_id.'">Large Equipment</a></li>';
+              echo '<li><a href="edit_budget_travel.php?year='.$item[0].'&budget_id='.$budget_id.'">Travel</a></li>';
+              echo '<li><a href="edit_budget_other_costs.php?year='.$item[0].'&budget_id='.$budget_id.'">Other Costs</a></li>';
+            echo '</ul>';
+            echo '</div>';
+            echo '</div>';
+          }  
+        } else {
+          echo '<a href="./dashboard.php">Return to dashboard.</a>';
         }
-
+        if(isset($message) && !empty($message)){
+          echo '<script>submissionMessage("'.$message.'",'.$error_type.');</script>';
+        }
         ?>
         <script>
           // Get the element with id="defaultOpen" and click on it
