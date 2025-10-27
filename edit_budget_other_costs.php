@@ -17,10 +17,6 @@ if (!isset($_SESSION['user'])) {
 
 $year = $_GET["year"];
 $budget_id = $_GET["budget_id"];
-$split = explode("-",$year);
-if($split[0] == "year"){
-  $year = $split[1];
-}
 $message = "";
 $error_type = 1;
 $invalid = 0;
@@ -192,7 +188,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_other_costs']) 
     <h1>Edit Budget Other Costs</h1>
     <div id="submission-message-holder"><p></p></div>
     <?php
-    if (!$invalid){
+    if (!$invalid && $has_access){
       // Stores information for input fields.
       // Index: 0 - name / id of input
       //        1 - label text
@@ -235,6 +231,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_other_costs']) 
         echo '<button type="submit" name="update_other_costs" class="submit-button">Modify</button>';
       echo '</div>';
       echo '</form>';
+    } else {
+      echo '<a href="./dashboard.php">Return to dashboard</a>';
     }
     ?>
     <?php

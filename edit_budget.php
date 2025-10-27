@@ -17,11 +17,17 @@ if (!isset($_SESSION['user'])) {
 $tab = $_GET["year"];
 $budget_id = $_GET["budget_id"];
 
-include './database/check_access.php';
-$has_access = check_access($_SESSION['user'],$budget_id);
-if(!$has_access){
-  $message = "Access denied.";
+if(!isset($budget_id) || empty($budget_id)){
+  $has_access = False;
+  $message = "Invalid referral link";
   $error_type = 1;
+} else {
+  include './database/check_access.php';
+  $has_access = check_access($_SESSION['user'],$budget_id);
+  if(!$has_access){
+    $message = "Access denied.";
+    $error_type = 1;
+  }
 }
 
 
@@ -93,11 +99,11 @@ if(!$has_access){
           echo '<div class="tab">';
             echo '<div class="tab-buttons">';
             $names = array(
-              array("year-1","Year 1"),
-              array("year-2","Year 2"),
-              array("year-3","Year 3"),
-              array("year-4","Year 4"),
-              array("year-5","Year 5")
+              array("year-1","Year 1","1"),
+              array("year-2","Year 2","2"),
+              array("year-3","Year 3","3"),
+              array("year-4","Year 4","4"),
+              array("year-5","Year 5","5")
             ); 
                 if(!isset($tab)){
                   $tab="year-1";
@@ -124,12 +130,12 @@ if(!$has_access){
             echo '</div>';
             echo '<div>';
             echo '<ul class="overview-list">';
-              echo '<li><a href="edit_budget_personnel.php?year='.$item[0].'&budget_id='.$budget_id.'">Personnel</a></li>';
-              echo '<li><a href="edit_budget_other_personnel.php?year='.$item[0].'&budget_id='.$budget_id.'">Other Personnel</a></li>';
-              echo '<li><a href="edit_budget_fringe.php?year='.$item[0].'&budget_id='.$budget_id.'">Fringe</a></li>';
-              echo '<li><a href="edit_budget_equipment.php?year='.$item[0].'&budget_id='.$budget_id.'">Large Equipment</a></li>';
-              echo '<li><a href="edit_budget_travel.php?year='.$item[0].'&budget_id='.$budget_id.'">Travel</a></li>';
-              echo '<li><a href="edit_budget_other_costs.php?year='.$item[0].'&budget_id='.$budget_id.'">Other Costs</a></li>';
+              echo '<li><a href="edit_budget_personnel.php?year='.$item[2].'&budget_id='.$budget_id.'">Personnel</a></li>';
+              echo '<li><a href="edit_budget_other_personnel.php?year='.$item[2].'&budget_id='.$budget_id.'">Other Personnel</a></li>';
+              echo '<li><a href="edit_budget_fringe.php?year='.$item[2].'&budget_id='.$budget_id.'">Fringe</a></li>';
+              echo '<li><a href="edit_budget_equipment.php?year='.$item[2].'&budget_id='.$budget_id.'">Large Equipment</a></li>';
+              echo '<li><a href="edit_budget_travel.php?year='.$item[2].'&budget_id='.$budget_id.'">Travel</a></li>';
+              echo '<li><a href="edit_budget_other_costs.php?year='.$item[2].'&budget_id='.$budget_id.'">Other Costs</a></li>';
             echo '</ul>';
             echo '</div>';
             echo '</div>';
