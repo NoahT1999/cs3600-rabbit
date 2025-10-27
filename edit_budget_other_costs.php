@@ -195,14 +195,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_other_costs']) 
       //        2 - tooltip text (Use NULL for no tooltip)
       //        3 - input field size (s for small, w for wide)
       $content_fields = array (
-        array("materials_and_supplies","Materials and Supplies:","Various materials and supplies. Added all together.","s"),
-        array("small_equipment","Small Equipment:","Any equipment or tools with individual values below $5,000.","s"),
-        array("publication","Publication:","Costs for publishing papers or other documents.","s"),
-        array("computer_services","Computer Services:","Costs for various computer services such as IT.","s"),
-        array("software","Software:","Cost of softare or other computer programs.","s"),
-        array("facility_fees","Facility Fees:","Fees for renting out facilities or conference centers.","s"),
-        array("conference_registration","Conference Registration Fees:","Ticket costs and fees for attending or hosting conferences.","s"),
-        array("other","Other/Miscellaneous Costs:","Any extra costs or fees that do not fit in any other category.","s")
+        array("materials_and_supplies","Materials and Supplies","Various materials and supplies. Added all together.","s"),
+        array("small_equipment","Small Equipment","Any equipment or tools with individual values below $5,000.","s"),
+        array("publication","Publication","Costs for publishing papers or other documents.","s"),
+        array("computer_services","Computer Services","Costs for various computer services such as IT.","s"),
+        array("software","Software","Cost of softare or other computer programs.","s"),
+        array("facility_fees","Facility Fees","Fees for renting out facilities or conference centers.","s"),
+        array("conference_registration","Conference Registration Fees","Ticket costs and fees for attending or hosting conferences.","s"),
+        array("other","Other/Miscellaneous Costs","Any extra costs or fees that do not fit in any other category.","s")
       );
       echo '<form method="POST">';
       foreach($content_fields as $item){
