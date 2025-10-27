@@ -1,0 +1,19 @@
+function highlightLabel(input_id,set_color=false){
+  console.log("In highlight label");
+  var input_element = document.getElementById(input_id);
+  var previousSibling = input_element.previousElementSibling;
+  while(previousSibling && !(previousSibling.getAttribute("for")==input_id)){
+    previousSibling = previousSibling.previousElementSibling;
+  }
+  if(previousSibling){
+    if(set_color){
+      previousSibling.classList.add("highlighted-text");
+    } else {
+      previousSibling.classList.remove("highlighted-text");
+    }
+    console.log("Found");
+  } else {
+    console.log("Label not found for: ",input_id);
+  }
+  
+}
