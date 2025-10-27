@@ -61,15 +61,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <div>
       <div class="navigation-head">
         <div class="site-logo">
-          <a href="../index.php">
+          <a href="./index.php">
             <h1>RaBBiT</h1>
           </a>
         </div>
         <ul class="navigation-menu">
           <?php
           session_start();
-          // Check if user is logged in
+          // Check if user is logged in, if not redirect to login page
           if (!isset($_SESSION['user'])) {
+            echo '<a href="../personnel.php" class="menu-item">';
+              echo '<li class="underline-hover-effect">Personnel</li>';
+            echo '</a>';
             echo '<a href="./login.php" class="menu-item active">';
               echo '<li class="underline-hover-effect">Login</li>';
             echo '</a>';
@@ -78,20 +81,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             echo '</a>';
           } else {
             echo '<ul class="navigation-menu">';
-              echo '<a href="./dashboard.php" class="menu-item">';
+              echo '<a href="../dashboard.php" class="menu-item">';
                 echo '<li class="underline-hover-effect">Budgets</li>';
               echo '</a>';
-              echo '<a href="./personnel.php" class="menu-item">';
+              echo '<a href="../personnel.php" class="menu-item">';
                 echo '<li class="underline-hover-effect">Personnel</li>';
               echo '</a>';
               echo '<div class="menu-item dropdown login">';
                 echo '<li class="underline-hover-effect">Account</li>';
                 echo '<div class="dropdown-content">';
                   echo '<ul>';
-                    echo '<li><a href="./database/manage_account.php" class="menu-item">Manage</a></li>';
-                    echo '<li><a href="./database/logout.php" class="menu-item">Logout</a></li>';
+                    echo '<li><a href="./manage_account.php" class="menu-item">Manage</a></li>';
+                    echo '<li><a href="./logout.php" class="menu-item">Logout</a></li>';
                     echo '<hr>';
-                    echo '<li><a href="./database/delete_account.php" class="menu-item error">Delete&nbspAccount</a></li>';
+                    echo '<li><a href="./delete_account.php" class="menu-item error">Delete&nbspAccount</a></li>';
                   echo '</ul>';
                 echo '</div>';
               echo '</div>';
@@ -153,7 +156,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
   </body>
   <footer>
     <div class="split-items">
-      <p>Last updated: <span>25 October 2025</span></p>
+      <p>Last updated: <span>23 October 2025</span></p>
       <p>Author: Josh Gillum</p>
     </div>
     <div class="split-items">
