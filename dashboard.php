@@ -88,12 +88,13 @@ if (!isset($_SESSION['user'])) {
           echo '<p>Budgets</p>';
           foreach($budgets as $item){
             echo '<div class="split-items">';
-              echo '<p>Budget '.$item['id'].': '.$item['name'].'</p>';
+              echo '<p>'.$item['name'].'</p>';
               echo '<a href="./edit_budget.php?budget_id='.$item['id'].'">Edit</a>';
             echo '</div>';
           }
         }
       ?>
+      <a href="create_budget.php">Create new budget</a>
     </div>
     <script src="" async defer></script>
     <hr id="foot-rule">
