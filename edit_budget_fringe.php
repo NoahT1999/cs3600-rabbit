@@ -53,16 +53,9 @@ $budget_id = $_GET["budget_id"];
     <script src="" async defer></script>
     <hr id="foot-rule">
   </body>
-  <footer>
-    <div class="split-items">
-      <p>Last updated: <span>26 October 2025</span></p>
-      <p>Author: Josh Gillum</p>
-    </div>
-    <div class="split-items">
-      <a href="./cookies.html">cookies</a>
-      <a href="./privacy.html">privacy policy</a>
-      <a href="./terms.html">terms and conditions</a>
-    </div>
-  </footer>
+  <?php
+    include 'database/foot.php';
+    footer(26,"October",2025,'Josh Gillum');
+  ?>
 </html>
 
