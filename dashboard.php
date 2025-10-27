@@ -87,7 +87,10 @@ if (!isset($_SESSION['user'])) {
         if(isset($budgets) && !empty($budgets)){
           echo '<p>Budgets</p>';
           foreach($budgets as $item){
-            echo '<p>Budget '.$item['id'].': '.$item['name'].'</p>';
+            echo '<div class="split-items">';
+              echo '<p>Budget '.$item['id'].': '.$item['name'].'</p>';
+              echo '<a href="./edit_budget.php?budget_id='.$item['id'].'">Edit</a>';
+            echo '</div>';
           }
         }
       ?>
