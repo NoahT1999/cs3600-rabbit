@@ -31,12 +31,11 @@ $budget_id = $_GET["budget_id"];
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Edit Budget</title>
+    <title>Edit Budget Fringe</title>
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="./CSS/style.css">
     <script src="./JS/title.js"></script>
-    <script src="./JS/tabs.js"></script>
   </head>
   <body>
     <!--[if lt IE 7]>
@@ -76,61 +75,12 @@ $budget_id = $_GET["budget_id"];
       <p>></p>
       <a href="./dashboard.php">budgets</a>
       <p>></p>
-      <p>edit-budget</p>
+      <a href="./edit_budget.php">edit-budget</a>
+      <p>></p>
+      <p>fringe</p>
     </div>
     <div class="content">
-      <div class="tab">
-        <div class="tab-buttons">
-          <?php
-          $names = array(
-            array("year-1","Year 1"),
-            array("year-2","Year 2"),
-            array("year-3","Year 3"),
-            array("year-4","Year 4"),
-            array("year-5","Year 5")
-          ); 
-              if(!isset($tab)){
-                $tab="year-1";
-              }
-
-              foreach($names as $item){
-                $prefix = '<button class="tablinks"';
-                $middle = '';
-                $suffix = ' onclick="openTab(event,\''.$item[0].'\')">'.$item[1].'</button>';
-                if($tab == $item[0]){
-                  $middle = ' id="defaultOpen"';
-                }
-                echo $prefix.$middle.$suffix;
-          }
-        echo '</div>';
-        echo '<!-- Tab content -->';
-        
-
-
-        foreach($names as $item){
-          echo '<div id="'.$item[0].'" class="tabcontent">';
-          echo '<div class="tab-title">';
-          echo '<h3>'.$item[1].'</h3>';
-          echo '</div>';
-          echo '<div>';
-          echo '<ul class="overview-list">';
-            echo '<li><a href="edit_budget_personnel.php?year='.$item[0].'&budget_id='.$budget_id.'">Personnel</a></li>';
-            echo '<li><a href="edit_budget_other_personnel.php?year='.$item[0].'&budget_id='.$budget_id.'">Other Personnel</a></li>';
-            echo '<li><a href="edit_budget_fringe.php?year='.$item[0].'&budget_id='.$budget_id.'">Fringe</a></li>';
-            echo '<li><a href="edit_budget_equipment.php?year='.$item[0].'&budget_id='.$budget_id.'">Large Equipment</a></li>';
-            echo '<li><a href="edit_budget_travel.php?year='.$item[0].'&budget_id='.$budget_id.'">Travel</a></li>';
-            echo '<li><a href="edit_budget_other_costs.php?year='.$item[0].'&budget_id='.$budget_id.'">Other Costs</a></li>';
-          echo '</ul>';
-          echo '</div>';
-          echo '</div>';
-        }
-
-        ?>
-        <script>
-          // Get the element with id="defaultOpen" and click on it
-          document.getElementById("defaultOpen").click();
-        </script>
-      </div>
+    <h1>Edit Budget Fringe</h1>
     </div>
     <script src="" async defer></script>
     <hr id="foot-rule">
@@ -147,3 +97,4 @@ $budget_id = $_GET["budget_id"];
     </div>
   </footer>
 </html>
+
