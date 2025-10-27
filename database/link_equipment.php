@@ -27,48 +27,66 @@ if(!$invalid){
   }
 }
 
-if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['add_equipment']) && !$invalid){
-  $fields = array(
-    array(NULL,'name','name','s'),
-    array(NULL,'description','description','s')
-  );
-  $columns = ""; // SQL query string of which question markes for prepare statement
-  $updated = ""; // SQL query string of which columns to update
-  $format = ""; // Format specifiers for bind_param
-  $values = []; // Variables holding values for bind_param.
-  $invalid_number = 0;
-  foreach($fields as $field){
-    // If variable is not explicitly set, fetch from POST
-    if(is_null($field[0])){ 
-      $field[0] = $_POST[$field[2]];
-    }
-    // Checks if value was updated in POST
-    if(isset($field[0]) && !empty($field[0])){
-        $columns = $columns."?,";
-        $updated = $updated.$field[1].",";
-        $format = $format.$field[3];
-        $values[] = $field[0];
-    }  
-  }
-  if(isset($updated) && !empty($updated)){
-    $table = 'equipment';
+try {
+  if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['link_equipment']) && !$invalid){
+    $equipment_id = $_POST['equipment_id'];
+
     include './db_connection.php';
-    $columns = substr($columns,0,-1);
-    $updated = substr($updated,0,-1);
-    $stmt = $conn->prepare('INSERT INTO '.$table.' ('.$updated.') VALUES ('.$columns.')');
-    $stmt->bind_param($format,...$values);
-    if($stmt->execute()){
-      $message = "Successfully updated database.";
+    $stmt = $conn->prepare("SELECT id from equipment WHERE id = ?");
+    $stmt->bind_param("s",$equipment_id);
+    $stmt->execute();
+    $stmt->store_result();
+    if($stmt->num_rows == 1){
+      $stmt->close();
+      $stmt = $conn->prepare("INSERT INTO budget_equipment (budget_id,equipment_id,year) VALUES (?,?,?)");
+      $stmt->bind_param("sss",$budget_id,$equipment_id,$year);
+      foreach(array(1,2,3,4,5) as $year){
+        if(!$stmt->execute()){
+          $message = "Equipment has already been linked to this budget.";
+          $error_type = 1;
+        }
+      }
+      $message = "Successfully linked equipment.";
       $error_type = 0;
+      $stmt->close();
     } else {
-      $message = "Error: ".$stmt->error;
+      $message = "Invalid equipment id.";
       $error_type = 1;
-      $updated_placeholders = [];
+      $invalid_id = 1;
+    }
+    $conn->close();
+  }
+} catch(Exception $e){
+  $message = "Error: ".$e->getMessage();
+  $error_type = 1;
+}
+
+if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['unlink_equipment']) && !$invalid){
+  $equipment_id = $_POST['equipment_id'];
+
+  include './db_connection.php';
+  $stmt = $conn->prepare("SELECT id from equipment WHERE id = ?");
+  $stmt->bind_param("s",$equipment_id);
+  $stmt->execute();
+  $stmt->store_result();
+  if($stmt->num_rows == 1){
+    $stmt->close();
+    $stmt = $conn->prepare("DELETE FROM budget_equipment WHERE budget_id=? AND equipment_id=?");
+    $stmt->bind_param("ss",$budget_id,$equipment_id);
+    if(!$stmt->execute()){
+      $message = "Equipment can not be unlinked.";
+      $error_type = 1;
+    } else {
+      $message = "Successfully unlinked.";
+      $error_type = 0;
     }
     $stmt->close();
-    $conn->close();
-
+  } else {
+    $message = "Invalid equipment id.";
+    $error_type = 1;
+    $invalid_id = 1;
   }
+  $conn->close();
 }
 ?>
 
@@ -81,7 +99,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['add_equipment']) && !$i
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Create Large Equipment</title>
+    <title>Link Large Equipment</title>
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="../CSS/style.css">
@@ -100,13 +118,12 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['add_equipment']) && !$i
       breadcrumbs(array(array("home","../index.php"),array("budget","../edit_budget.php?budget_id=".$budget_id),array("add-equipment","javascript:location.reload();")));
     ?>
     <div class="content">
-      <h1>Create Large Equipment</h1>
+      <h1>Link Large Equipment</h1>
       <div id="submission-message-holder"><p></p></div>
       <?php
       if(!$invalid){
         $content_fields = array (
-          array("name","Name","Short name of the equipment for reference.","s","Flux capacitor"),
-          array("description","Description","Longer description of the equipment. Shows as a tooltip when hovering over the equipment's name","w","The flux capicitor is...")
+          array("equipment_id","Equipment ID","ID of the equipment. Use the search to find the ID.","s","123"),
         );
         echo '<form method="POST">';
         foreach($content_fields as $item){
@@ -136,7 +153,8 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['add_equipment']) && !$i
           echo '</div>';
         }
         echo '<div>';
-          echo '<button type="submit" name="add_equipment" class="submit-button">Create</button>';
+          echo '<button type="submit" name="link_equipment" class="submit-button">Link</button>';
+          echo '<button type="submit" name="unlink_equipment" class="submit-button">Unlink</button>';
         echo '</div>';
         echo '</form>';
         
@@ -148,7 +166,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['add_equipment']) && !$i
       }
       ?>
       <br>
-      <a href="./search_equipment.php">Search for existing Equipment</a>
+      <a href="./search_equipment.php">Search for Equipment</a>
     </div>
     <script src="" async defer></script>
     <hr id="foot-rule">

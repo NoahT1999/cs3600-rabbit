@@ -1,4 +1,11 @@
 <?php
+function write_to_console($data) {
+ $console = $data;
+ if (is_array($console))
+ $console = implode(',', $console);
+
+ echo "<script>console.log('Console: " . $console . "' );</script>";
+}
 $message = "";
 $error_type = 1;
 $invalid = False;
@@ -9,66 +16,45 @@ if(!isset($_SESSION['user'])){
   $invalid = True;
 }
 
-$budget_id = $_GET['budget_id'];
 
-if(!$invalid && !isset($budget_id)){
-  $message = "Invalid referral link.";
-  $invalid = True;
-  $direct = array("../dashboard.php","Dashboard");
-}
+if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['search_equipment']) && !$invalid){
+  $name = $_POST['name'];
 
-if(!$invalid){
-  include './check_access.php';
-  $has_access = check_access($_SESSION['user'],$budget_id,$to_root="../");
-  if(!$has_access){
-    $message = "Access denied.";
-    $invalid = 1;
-    $direct = array("../dashboard.php","Dashboard");
-  }
-}
-
-if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['add_equipment']) && !$invalid){
-  $fields = array(
-    array(NULL,'name','name','s'),
-    array(NULL,'description','description','s')
-  );
-  $columns = ""; // SQL query string of which question markes for prepare statement
-  $updated = ""; // SQL query string of which columns to update
-  $format = ""; // Format specifiers for bind_param
-  $values = []; // Variables holding values for bind_param.
-  $invalid_number = 0;
-  foreach($fields as $field){
-    // If variable is not explicitly set, fetch from POST
-    if(is_null($field[0])){ 
-      $field[0] = $_POST[$field[2]];
-    }
-    // Checks if value was updated in POST
-    if(isset($field[0]) && !empty($field[0])){
-        $columns = $columns."?,";
-        $updated = $updated.$field[1].",";
-        $format = $format.$field[3];
-        $values[] = $field[0];
-    }  
-  }
-  if(isset($updated) && !empty($updated)){
-    $table = 'equipment';
-    include './db_connection.php';
-    $columns = substr($columns,0,-1);
-    $updated = substr($updated,0,-1);
-    $stmt = $conn->prepare('INSERT INTO '.$table.' ('.$updated.') VALUES ('.$columns.')');
-    $stmt->bind_param($format,...$values);
-    if($stmt->execute()){
-      $message = "Successfully updated database.";
-      $error_type = 0;
+  include './db_connection.php';
+  $stmt = $conn->prepare("SELECT id,name,description from equipment WHERE name LIKE ?");
+  $stmt->bind_param("s",$name);
+  $stmt->execute();
+  $result = $stmt->get_result();
+  $data = $result->fetch_all(MYSQLI_ASSOC);
+  if(isset($data) && !empty($data)){
+    if(sizeof($data) == 1){
+      $message = "1 result";
     } else {
-      $message = "Error: ".$stmt->error;
-      $error_type = 1;
-      $updated_placeholders = [];
+      $message = sizeof($data)." results";
     }
-    $stmt->close();
-    $conn->close();
-
+    $error_type = 2;
+    $total_usage_stmt = $conn->prepare("SELECT COUNT(DISTINCT budget_id) as total FROM budget_equipment WHERE equipment_id = ?");
+    $access_usage_stmt = $conn->prepare("SELECT COUNT(DISTINCT budget_equipment.budget_id) as access FROM budget_equipment JOIN budget_access  ON budget_equipment.budget_id = budget_access.budget_id WHERE budget_equipment.equipment_id = ? AND budget_access.user_id = ?");
+    for($i = 0; $i < sizeof($data); $i++){
+      $item = $data[$i];
+      $total_usage_stmt->bind_param("s",$item['id']);
+      $access_usage_stmt->bind_param("ss",$item['id'],$_SESSION['user']);
+      if($total_usage_stmt->execute()){
+        $total_result = $total_usage_stmt->get_result();
+        $data[$i]['total_usage'] = $total_result->fetch_assoc()['total'];
+      } else {
+        $data[$i]['total_usage'] = 0;
+      }
+      $access_usage_stmt->execute();
+      $access_result = $access_usage_stmt->get_result();
+      $data[$i]['accessible_usage'] = $access_result->fetch_assoc()['access'];
+    }
+  } else {
+    $message = "No results found.";
+    $error_type = 2;
   }
+  $stmt->close();
+  $conn->close();
 }
 ?>
 
@@ -81,7 +67,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['add_equipment']) && !$i
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Create Large Equipment</title>
+    <title>Link Large Equipment</title>
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="../CSS/style.css">
@@ -97,17 +83,30 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['add_equipment']) && !$i
       include 'nav.php';
       navigation(isset($_SESSION['user']),$to_root="../");
       include 'breadcrumb.php';
-      breadcrumbs(array(array("home","../index.php"),array("budget","../edit_budget.php?budget_id=".$budget_id),array("add-equipment","javascript:location.reload();")));
+      breadcrumbs(array(array("home","../index.php"),array("budget","../edit_budget.php?budget_id=".$budget_id),array("search-equipment","javascript:location.reload();")));
     ?>
     <div class="content">
-      <h1>Create Large Equipment</h1>
+      <h1>Search for Large Equipment</h1>
       <div id="submission-message-holder"><p></p></div>
       <?php
       if(!$invalid){
+        if(isset($data) && !empty($data)){
+          foreach($data as $result){
+            echo '<div class="split-items">';
+            if(isset($result['description']) && !empty($result['description'])){
+              echo '<p class="tooltip">(ID: '.$result['id'].') '.$result['name'].'<span class="tooltiptext">'.$result['description'].'</span></p>';
+            } else {
+              echo '<p>(ID: '.$result['id'].') '.$result['name'].'</p>';
+            }
+            echo '<p>Used in '.$result['total_usage'].' budgets, '.$result['accessible_usage'].' of which you have access to.</p>';
+            echo '</div>';
+          }
+          echo '<hr>';
+        }
         $content_fields = array (
-          array("name","Name","Short name of the equipment for reference.","s","Flux capacitor"),
-          array("description","Description","Longer description of the equipment. Shows as a tooltip when hovering over the equipment's name","w","The flux capicitor is...")
+          array("name","Name","Equipment name. Search is case insensitive, so 'FLUX' == 'flux'. Wildcard '%' represents 0 or more characters. Wildcard '_' represents a single character.","s","Flux capacitor."),
         );
+        echo '<h3>Search</h3>';
         echo '<form method="POST">';
         foreach($content_fields as $item){
           echo '<div class="split-items">';
@@ -136,7 +135,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['add_equipment']) && !$i
           echo '</div>';
         }
         echo '<div>';
-          echo '<button type="submit" name="add_equipment" class="submit-button">Create</button>';
+          echo '<button type="submit" name="search_equipment" class="submit-button">Search</button>';
         echo '</div>';
         echo '</form>';
         
@@ -147,8 +146,6 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['add_equipment']) && !$i
         echo '<script>submissionMessage("'.$message.'",'.$error_type.');</script>';
       }
       ?>
-      <br>
-      <a href="./search_equipment.php">Search for existing Equipment</a>
     </div>
     <script src="" async defer></script>
     <hr id="foot-rule">

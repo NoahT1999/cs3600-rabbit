@@ -170,7 +170,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_equipment_costs
         echo '<input type="text" name="'.$item[0].'" id="'.$item[0].'"'.$middle.' placeholder="$'.$row['cost'].'" maxlength='.$size.' onfocus="highlightLabel(\''.$item[0].'\',true);" onfocusout="highlightLabel(\''.$item[0].'\',false);"/>';
         echo '</div>';
       }
-        echo '<a href="database/add_equipment.php?budget_id='.$budget_id.'">Add Equipment</a>';
         echo '<div>';
           echo '<button type="submit" name="update_equipment_costs" class="submit-button">Modify</button>';
         echo '</div>';
@@ -178,6 +177,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_equipment_costs
     } else {
       echo '<a href="'.$direct[0].'">'.$direct[1].'</a>';
     }
+    echo '<hr>';
+    echo '<a href="database/search_equipment.php">Search for Equipment</a><br>';
+    echo '<a href="database/link_equipment.php?budget_id='.$budget_id.'">Link/Unlink Equipment</a><br>';
+    echo '<a href="database/add_equipment.php?budget_id='.$budget_id.'">Create new Equipment</a><br>';
     ?>
     </div>
     <?php
