@@ -14,7 +14,7 @@ if (!isset($_SESSION['user'])) {
   exit();
 }
 
-$tab = $_GET["year"];
+$tab = 'year-'.$_GET["year"];
 $budget_id = $_GET["budget_id"];
 
 if(!isset($budget_id) || empty($budget_id)){

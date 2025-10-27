@@ -134,7 +134,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_equipment_costs
       include 'database/nav.php';
       navigation(isset($_SESSION['user']));
       include 'database/breadcrumb.php';
-      breadcrumbs(array(array("home","./index.php"),array("budgets","./dashboard.php"),array("edit-budget","./edit_budget.php?budget_id=".$budget_id),array("equipment","javascript:location.reload();")));
+      breadcrumbs(array(array("home","./index.php"),array("budgets","./dashboard.php"),array("edit-budget","./edit_budget.php?budget_id=".$budget_id.'&year='.$year),array("equipment","javascript:location.reload();")));
     ?>
     <div class="content">
     <h1>Edit Budget Equipment</h1>
@@ -178,9 +178,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_equipment_costs
       echo '<a href="'.$direct[0].'">'.$direct[1].'</a>';
     }
     echo '<hr>';
-    echo '<a href="database/search_equipment.php">Search for Equipment</a><br>';
-    echo '<a href="database/link_equipment.php?budget_id='.$budget_id.'">Link/Unlink Equipment</a><br>';
-    echo '<a href="database/add_equipment.php?budget_id='.$budget_id.'">Create new Equipment</a><br>';
+    echo '<a href="database/search_equipment.php?budget_id='.$budget_id.'&year='.$year.'">Search for Equipment</a><br>';
+    echo '<a href="database/link_equipment.php?budget_id='.$budget_id.'&year='.$year.'">Link/Unlink Equipment</a><br>';
+    echo '<a href="database/add_equipment.php?budget_id='.$budget_id.'&year='.$year.'">Create new Equipment</a><br>';
     ?>
     </div>
     <?php

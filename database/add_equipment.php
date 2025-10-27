@@ -97,7 +97,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['add_equipment']) && !$i
       include 'nav.php';
       navigation(isset($_SESSION['user']),$to_root="../");
       include 'breadcrumb.php';
-      breadcrumbs(array(array("home","../index.php"),array("budget","../edit_budget.php?budget_id=".$budget_id),array("add-equipment","javascript:location.reload();")));
+      breadcrumbs(array(array("home","../index.php"),array("dashboard","../dashboard.php"),array("budgets","../edit_budget.php?budget_id=".$budget_id.'&year='.$_GET['year']),array("edit-equipment","../edit_budget_equipment.php?budget_id=".$budget_id."&year=".$_GET['year']),array("add-equipment","javascript:location.reload();")));
     ?>
     <div class="content">
       <h1>Create Large Equipment</h1>
@@ -146,9 +146,9 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['add_equipment']) && !$i
       if(isset($message) && !empty($message)){
         echo '<script>submissionMessage("'.$message.'",'.$error_type.');</script>';
       }
+      echo '<br>';
+      echo '<a href="./search_equipment.php?budget_id='.$budget_id.'&year='.$_GET['year'].'">Search for Equipment</a>';
       ?>
-      <br>
-      <a href="./search_equipment.php">Search for existing Equipment</a>
     </div>
     <script src="" async defer></script>
     <hr id="foot-rule">

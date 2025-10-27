@@ -83,7 +83,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['search_equipment']) && 
       include 'nav.php';
       navigation(isset($_SESSION['user']),$to_root="../");
       include 'breadcrumb.php';
-      breadcrumbs(array(array("home","../index.php"),array("budget","../edit_budget.php?budget_id=".$budget_id),array("search-equipment","javascript:location.reload();")));
+      breadcrumbs(array(array("home","../index.php"),array("dashboard","../dashboard.php"),array("budgets","../edit_budget.php?budget_id=".$_GET['budget_id'].'&year='.$_GET['year']),array("edit-equipment","../edit_budget_equipment.php?budget_id=".$_GET['budget_id']."&year=".$_GET['year']),array("search-equipment","javascript:location.reload();")));
     ?>
     <div class="content">
       <h1>Search for Large Equipment</h1>
