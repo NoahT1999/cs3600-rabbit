@@ -60,8 +60,67 @@ if (!$invalid){
 }
 
 
+$updated_placeholders = [];
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_other_costs']) && !$invalid){
-  write_to_console("Allowed");
+  $table = "budget_other_costs";
+  include './database/format_numbers.php';
+  $fields = array( // Stores each field that can be updated.
+    array(NULL,'materials_and_supplies','materials_and_supplies','s'),
+    array(NULL,'small_equipment','small_equipment','s'),
+    array(NULL,'publication','publication','s'),
+    array(NULL,'computer_services','computer_services','s'),
+    array(NULL,'software','software','s'),
+    array(NULL,'facility_fees','facility_fees','s'),
+    array(NULL,'conference_registration','conference_registration','s'),
+    array(NULL,'other','other','s')
+  );
+  $updated = ""; // SQL query string of which columns to update
+  $format = ""; // Format specifiers for bind_param
+  $values = []; // Variables holding values for bind_param.
+  $invalid_number = 0;
+  foreach($fields as $field){
+    // If variable is not explicitly set, fetch from POST
+    if(is_null($field[0])){ 
+      $field[0] = $_POST[$field[2]];
+    }
+    // Checks if value was updated in POST
+    if(isset($field[0]) && !empty($field[0])){
+      $code = "";
+      if(!($code=format_number($field[0]))){ // Checks if the number is correctly formatted.
+        $updated = $updated.$field[1]."=?,";
+        $updated_placeholders[] = array($field[2],$field[0]);
+        $format = $format.$field[3];
+        $values[] = $field[0];
+      } else { // Displays a message stating what went wrong
+        $message = "Invalid number: \'".$field[0]."\' for field: \'".$field[1]."\'. ".$code;
+        $error_type = 1;
+        $invalid_number = 1;
+        break;
+      }
+    }
+  }
+  if(!$invalid_number){
+    if(isset($updated) && !empty($updated)){ // Ensures at least one value will be updated
+      $updated = substr($updated,0,-1);
+      $stmt = $conn->prepare('UPDATE '.$table.' SET '.$updated.' WHERE id=? AND year=?');
+      $values[] = $budget_id; // Appends id to list of values so it can be unpacked.
+      $values[] = $year;
+      write_to_console($values);
+      $stmt->bind_param($format."ss",...$values);
+      if($stmt->execute()){
+        $message = "Successfully updated database.";
+        $error_type = 0;
+      } else {
+        $message = "Error: ".$stmt->error;
+        $error_type = 1;
+        $updated_placeholders = [];
+      }
+      $stmt->close();
+      $conn->close();
+    }
+  } else {
+    $updated_placeholders = [];
+  }
 }
 
 
@@ -84,6 +143,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_other_costs']) 
     <link rel="stylesheet" href="./CSS/style.css">
     <script src="./JS/title.js"></script>
     <script src="./JS/message.js"></script>
+    <script src="./JS/placeholder.js"></script>
+    <script src="./JS/highlight_label.js"></script>
   </head>
   <body>
     <!--[if lt IE 7]>
@@ -132,68 +193,58 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_other_costs']) 
     <div id="submission-message-holder"><p></p></div>
     <?php
     if (!$invalid){
+      // Stores information for input fields.
+      // Index: 0 - name / id of input
+      //        1 - label text
+      //        2 - tooltip text (Use NULL for no tooltip)
+      //        3 - input field size (s for small, w for wide)
+      $content_fields = array (
+        array("materials_and_supplies","Materials and Supplies:","Various materials and supplies. Added all together.","s"),
+        array("small_equipment","Small Equipment:","Any equipment or tools with individual values below $5,000.","s"),
+        array("publication","Publication:","Costs for publishing papers or other documents.","s"),
+        array("computer_services","Computer Services:","Costs for various computer services such as IT.","s"),
+        array("software","Software:","Cost of softare or other computer programs.","s"),
+        array("facility_fees","Facility Fees:","Fees for renting out facilities or conference centers.","s"),
+        array("conference_registration","Conference Registration Fees:","Ticket costs and fees for attending or hosting conferences.","s"),
+        array("other","Other/Miscellaneous Costs:","Any extra costs or fees that do not fit in any other category.","s")
+      );
       echo '<form method="POST">';
+      foreach($content_fields as $item){
         echo '<div class="split-items">';
-          echo '<label for="materials_and_supplies" class="tooltip">Materials and Supplies: ';
-            echo '<span class="tooltiptext">Various materials and supplies. Added all together.</span>';
-          echo '</label>';
-          echo '<input type="text" name="materials_and_supplies" id="materials_and_supplies" class="text-input-small" placeholder="$'.$data['materials_and_supplies'].'" maxlength="45"/>';
+        $middle = '';
+        if(!is_null($item[2])){
+          $middle = ' class="tooltip"';
+        }
+        echo '<label for="'.$item[0].'"'.$middle.'>'.$item[1];
+        if(!is_null($item[2])){
+          echo '<span class="tooltiptext">'.$item[2].'</span>';
+        }
+        echo '</label>';
+        $middle = "";
+        $size = "45";
+        if($item[3] == "s"){
+          $middle = ' class="text-input-small"';
+        } else if($item[3] == "w"){
+          $middle = ' class="text-input-wide"';
+          $size = 255;
+        }
+        echo '<input type="text" name="'.$item[0].'" id="'.$item[0].'"'.$middle.' placeholder="$'.$data[$item[0]].'" maxlength='.$size.' onfocus="highlightLabel(\''.$item[0].'\',true);" onfocusout="highlightLabel(\''.$item[0].'\',false);"/>';
         echo '</div>';
-        echo '<div class="split-items">';
-          echo '<label for="small_equipment" class="tooltip">Small Equipment: ';
-            echo '<span class="tooltiptext">Any equipment or tools with individual values below $5,000.</span>';
-          echo '</label>';
-          echo '<input type="text" name="small_equipment" id="small_equipment" class="text-input-small" placeholder="$'.$data['small_equipment'].'" maxlength="45"/>';
-        echo '</div>';
-        echo '<div class="split-items">';
-          echo '<label for="publication" class="tooltip">Publication: ';
-            echo '<span class="tooltiptext">Costs for publishing papers or other documents.</span>';
-          echo '</label>';
-          echo '<input type="text" name="publication" id="publication" class="text-input-small" placeholder="$'.$data['publication'].'" maxlength="45"/>';
-        echo '</div>';
-        echo '<div class="split-items">';
-          echo '<label for="computer_services" class="tooltip">Computer Services: ';
-            echo '<span class="tooltiptext">Costs for various computer services such as IT.</span>';
-          echo '</label>';
-          echo '<input type="text" name="computer_services" id="computer_services" class="text-input-small" placeholder="$'.$data['computer_services'].'" maxlength="45"/>';
-        echo '</div>';
-        echo '<div class="split-items">';
-          echo '<label for="software" class="tooltip">Software: ';
-            echo '<span class="tooltiptext">Cost of software or other computer programs.</span>';
-          echo '</label>';
-          echo '<input type="text" name="software" id="software" class="text-input-small" placeholder="$'.$data['software'].'" maxlength="45"/>';
-        echo '</div>';
-        echo '<div class="split-items">';
-          echo '<label for="facility_fees" class="tooltip">Facility Fees: ';
-            echo '<span class="tooltiptext">Fees for renting out facilities or conference centers.</span>';
-          echo '</label>';
-          echo '<input type="text" name="facility_fees" id="facility_fees" class="text-input-small" placeholder="$'.$data['facility_fees'].'" maxlength="45"/>';
-        echo '</div>';
-        echo '<div class="split-items">';
-          echo '<label for="conference_registration" class="tooltip">Conference Registration Fees: ';
-            echo '<span class="tooltiptext">Ticket costs and fees for attending or hosting conferences.</span>';
-          echo '</label>';
-          echo '<input type="text" name="conference_registration" id="conference_registration" class="text-input-small" placeholder="$'.$data['conference_registration'].'" maxlength="45"/>';
-        echo '</div>';
-        echo '<div class="split-items">';
-          echo '<label for="other" class="tooltip">Other/Miscellaneous Costs: ';
-            echo '<span class="tooltiptext">Any extra costs or fees that do not fit in any other category.</span>';
-          echo '</label>';
-          echo '<input type="text" name="other" id="other" class="text-input-small" placeholder="$'.$data['other'].'" maxlength="45"/>';
-        echo '</div>';
-        echo '<div>';
-        echo '<input type="hidden" name="year" id="year" value="'.$year.'"/>';
-        echo '<input type="hidden" name="budget_id" id="budget_id" value="'.$budget_id.'"/>';
-        echo '</div>';
-        echo '<div>';
-          echo '<button type="submit" name="update_other_costs" class="styled-button submit-button">Modify</button>';
-        echo '</div>';
+      }
+      echo '<div>';
+        echo '<button type="submit" name="update_other_costs" class="submit-button">Modify</button>';
+      echo '</div>';
       echo '</form>';
     }
     ?>
     <?php
       if(isset($message) && !empty($message)){
         echo '<script>submissionMessage("'.$message.'",'.$error_type.');</script>';
+      }
+      if(isset($updated_placeholders) && !empty($updated_placeholders)){
+        foreach($updated_placeholders as $item){
+          echo '<script>updatePlaceholder("'.$item[0].'","$'.$item[1].'");</script>';
+        }
       }
     ?>
     </div>
