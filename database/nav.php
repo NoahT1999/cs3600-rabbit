@@ -1,9 +1,5 @@
 <?php
-function navigation($logged_in=True,$from_database=False){
-  $to_root = './';
-  if($from_database){
-    $to_root = '../';
-  }
+function navigation($logged_in=True,$to_root="./"){
   echo '<div>';
     echo '<div class="navigation-head">';
       echo '<div class="site-logo">';

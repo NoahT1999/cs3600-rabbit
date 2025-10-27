@@ -61,7 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <![endif]-->
     <?php
       include 'nav.php';
-      navigation(isset($_SESSION['user']),$from_database=True);
+      navigation(isset($_SESSION['user']),$to_root="../");
       include 'breadcrumb.php';
       breadcrumbs(array(array("home","../index.php"),array("login","javascript:location.reload();")));
     ?>
