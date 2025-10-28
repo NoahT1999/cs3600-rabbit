@@ -16,7 +16,7 @@ function navigation($logged_in=True,$to_root="./"){
               echo '<li><a href="'.$to_root.'dashboard.php" class="menu-item">Dashboard</a></li>';
               echo '<li><a href="'.$to_root.'create_budget.php" class="menu-item">Create&nbspBudget</a></li>';
               echo '<hr>';
-              echo '<li><a href="'.$to_root.'database/delete_budget.php" class="menu-item">Manage&nbspBudgets</a></li>';
+              echo '<li><a href="'.$to_root.'database/budget_settings.php" class="menu-item">Manage&nbspBudgets</a></li>';
             echo '</ul>';
           echo '</div>';
         echo '</div>';
