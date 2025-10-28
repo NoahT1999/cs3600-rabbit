@@ -20,18 +20,23 @@ $error_type = 1;
 $fail = False;
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_budget'])){
   $name = $_POST['name'];
+  $effective_date = $_POST['effective_date'];
   write_to_console($name);
   include './database/db_connection.php';
 
   // Create budget in budget table
-  $stmt = $conn->prepare("INSERT INTO budget (name) VALUES (?)");
-  $stmt->bind_param("s",$name);
-  if(!$stmt->execute()){
-    $message = "Failed to add new budget.";
-    $fail = True;
+  if(isset($name) && isset($effective_date)){
+    $stmt = $conn->prepare("INSERT INTO budget (name,effective_date) VALUES (?,?)");
+    $stmt->bind_param("ss",$name,$effective_date);
+    if(!$stmt->execute()){
+      $message = "Failed to add new budget.";
+      $fail = True;
+    } else {
+      $budget_id = $stmt->insert_id;
+      $stmt->close();
+    }
   } else {
-    $budget_id = $stmt->insert_id;
-    $stmt->close();
+    $fail = True;
   }
 
   if(!$fail){
@@ -94,7 +99,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_budget'])){
     <![endif]-->
     <?php
       include 'database/nav.php';
-      navigation(isset($_SESSION['user']),$from_database=True);
+      navigation(isset($_SESSION['user']));
       include 'database/breadcrumb.php';
       breadcrumbs(array(array("home","./index.php"),array("budgets","./dashboard.php"),array("create-budget","javascript:location.reload();")));
     ?>
@@ -106,6 +111,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_budget'])){
           <label for="name" class="tooltip">Name<span class="tooltiptext">Name of the budget.</span></label> 
           <input type="text" name="name" id="name" placeholder="Sample budget" maxlength="45" required class="text-input-small" onfocus="highlightLabel('name',true);" onfocusout="highlightLabel('name',false);"/>
         </div>
+        <?php
+          echo '<div class="split-items">';
+          echo '<label for="effective_date" class="tooltip">Effective Start Date<span class="tooltiptext">The day that this budget takes effect on</span></label>';
+            echo '<input type="date" required id="effective_date" name="effective_date" onfocus="highlightLabel(\'effective_date\',true);" onfocusout="highlightLabel(\'effective_date\',false);">';
+          echo '</div>';
+        ?>
         <div>
           <button type="submit" name="create_budget" class="styled-button submit-button">Create</button>
         </div>
