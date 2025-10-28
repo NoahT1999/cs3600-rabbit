@@ -49,13 +49,12 @@ if (!isset($_SESSION['user'])) {
   $invalid = True;
 }
 
-$year = $_GET["year"];
 $budget_id = $_GET["budget_id"];
-$type_invalid = False;
+$_SESSION['type_invalid'] = False;
 
 if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_type']) && !$invalid){
-  $_SESSION['travel_type'] = verify_type($type_invalid,$message,$_POST['destination-type']);
-  if($type_invalid){
+  $_SESSION['travel_type'] = verify_type($_SESSION['type_invalid'],$message,$_POST['destination-type']);
+  if($_SESSION['type_invalid']){
     $_SESSION['travel_type'] = NULL;
   } else {
     include './database/db_connection.php';
@@ -125,6 +124,13 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_domestic_destina
   $_SESSION['selected_destination'] = True;
   
 }
+
+if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_dates']) && !$invalid){
+  $_SESSION['departure_date'] = $_POST['departure_date'];
+  $_SESSION['return_date'] = $_POST['return_date'];
+  $_SESSION['selected_dates'] = True;
+  
+}
 ?>
 
 <!DOCTYPE html>
@@ -160,8 +166,8 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_domestic_destina
       <div id="submission-message-holder"><p></p></div>
       <?php
       if(!$invalid){
-        if(!isset($_SESSION) || empty($_SESSION['travel_type']) || $type_invalid){ // Gets destination-type from user
         echo '<div id="input-form">';
+        if(!isset($_SESSION) || empty($_SESSION['travel_type']) || $_SESSION['type_invalid']){ // Gets destination-type from user
           echo '<form method="POST">';
             echo '<select id="destination-type" name="destination-type">';
               echo '<option value="default">Select travel type</option>';
@@ -172,11 +178,23 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_domestic_destina
               echo '<button type="submit" name="submit_type" class="submit-button">Next</button>';
             echo '</div>';
           echo '</form>';
-        echo '</div>';
         } else { // Gets destination from user
-          if($_SESSION['selected_destination']){
+          if($_SESSION['selected_destination'] && !$_SESSION['selected_dates']){
             
-          } else {
+          echo '<form method="POST">';
+            echo '<div class="split-items">';
+            echo '<label for="depart_date" class="tooltip">Departure Date<span class="tooltiptext">The day that you will leave for the trip on</span></label>';
+              echo '<input type="date" required id="depart_date" name="depart_date" onfocus="highlightLabel(\'depart_date\',true);" onfocusout="highlightLabel(\'depart_date\',false);">';
+            echo '</div>';
+            echo '<div class="split-items">';
+            echo '<label for="return_date"class="tooltip">Return Date<span class="tooltiptext">The day you will return from the trip on.</span></label>';
+              echo '<input type="date" required id="return_date" name="return_date" onfocus="highlightLabel(\'return_date\',true);" onfocusout="highlightLabel(\'return_date\',false);">';
+            echo '</div>';
+            echo '<div>';
+              echo '<button type="submit" name="submit_dates" class="submit-button">Next</button>';
+            echo '</div>';
+          echo '</form>';
+          } else if(!$_SESSION['selected_destination']){
             if($_SESSION['travel_type'] == 'domestic'){
               echo '<form method="POST">';
                 echo '<select name="domestic_state" id="domestic_state">';
@@ -196,8 +214,11 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_domestic_destina
             } else if($_SESSION['travel_type'] == 'international'){
               echo '<p>International</p>';
             }
+          } else if($_SESSION['selected_destination'] && $_SESSION['selected_dates']){
+            echo '<p>Total</p>';
           }
         }
+        echo '</div>';
       } else {
         echo '<a href="'.$direct[0].'">'.$direct[1].'</a>';
       }
