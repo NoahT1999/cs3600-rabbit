@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Oct 23, 2025 at 10:24 PM
+-- Generation Time: Oct 28, 2025 at 07:15 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -29,8 +29,18 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `budget` (
   `id` int(11) NOT NULL,
-  `name` varchar(45) NOT NULL
+  `name` varchar(45) NOT NULL,
+  `effective_date` date NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `budget`
+--
+
+INSERT INTO `budget` (`id`, `name`, `effective_date`) VALUES
+(14, 'Budget 1', '2026-01-01'),
+(15, 'Budget 2', '2026-01-01'),
+(16, 'testing 72', '2026-01-01');
 
 -- --------------------------------------------------------
 
@@ -42,6 +52,140 @@ CREATE TABLE `budget_access` (
   `user_id` int(11) NOT NULL,
   `budget_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `budget_access`
+--
+
+INSERT INTO `budget_access` (`user_id`, `budget_id`) VALUES
+(20, 14),
+(20, 16),
+(28, 15);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `budget_equipment`
+--
+
+CREATE TABLE `budget_equipment` (
+  `budget_id` int(11) NOT NULL,
+  `equipment_id` int(11) NOT NULL,
+  `year` int(11) NOT NULL,
+  `cost` decimal(10,2) DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `budget_equipment`
+--
+
+INSERT INTO `budget_equipment` (`budget_id`, `equipment_id`, `year`, `cost`) VALUES
+(14, 1, 1, 321.00),
+(14, 2, 1, 0.00),
+(14, 2, 2, 0.00),
+(14, 2, 3, 123.00),
+(14, 2, 4, 0.00),
+(14, 2, 5, 0.00),
+(14, 3, 1, 0.00),
+(14, 3, 2, 0.00),
+(14, 3, 3, 0.00),
+(14, 3, 4, 0.00),
+(14, 3, 5, 0.00),
+(14, 4, 1, 0.00),
+(14, 4, 2, 0.00),
+(14, 4, 3, 46.52),
+(14, 4, 4, 0.00),
+(14, 4, 5, 0.00);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `budget_other_costs`
+--
+
+CREATE TABLE `budget_other_costs` (
+  `id` int(11) NOT NULL,
+  `year` int(11) NOT NULL,
+  `materials_and_supplies` decimal(10,2) DEFAULT 0.00,
+  `small_equipment` decimal(10,2) DEFAULT 0.00,
+  `publication` decimal(10,2) DEFAULT 0.00,
+  `computer_services` decimal(10,2) DEFAULT 0.00,
+  `software` decimal(10,2) DEFAULT 0.00,
+  `facility_fees` decimal(10,2) DEFAULT 0.00,
+  `conference_registration` decimal(10,2) DEFAULT 0.00,
+  `other` decimal(10,2) DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `budget_other_costs`
+--
+
+INSERT INTO `budget_other_costs` (`id`, `year`, `materials_and_supplies`, `small_equipment`, `publication`, `computer_services`, `software`, `facility_fees`, `conference_registration`, `other`) VALUES
+(14, 1, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.73, 12312345.00),
+(14, 2, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(14, 3, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(14, 4, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(14, 5, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(15, 1, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(15, 2, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(15, 3, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(15, 4, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(15, 5, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(16, 1, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(16, 2, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(16, 3, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(16, 4, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(16, 5, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `domestic_travel_per_diem`
+--
+
+CREATE TABLE `domestic_travel_per_diem` (
+  `id` int(11) NOT NULL,
+  `state` varchar(2) NOT NULL,
+  `destination` varchar(255) NOT NULL,
+  `county` varchar(255) NOT NULL,
+  `season_start` date DEFAULT NULL,
+  `season_end` date DEFAULT NULL,
+  `lodging` int(11) DEFAULT NULL,
+  `mie` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `domestic_travel_per_diem`
+--
+
+INSERT INTO `domestic_travel_per_diem` (`id`, `state`, `destination`, `county`, `season_start`, `season_end`, `lodging`, `mie`) VALUES
+(1, 'WA', 'Spokane', 'Spokane', NULL, NULL, 100, 200),
+(2, 'WA', 'Seattle', 'King', '1000-10-01', '1000-05-31', 188, 92),
+(3, 'WA', 'Seattle', 'King', '1000-06-01', '1000-09-30', 248, 92),
+(4, 'ID', 'Coeur dAlene', 'Kootenai', NULL, NULL, 200, 500),
+(5, 'WA', 'Tacoma', 'King', NULL, NULL, 48, 92);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `equipment`
+--
+
+CREATE TABLE `equipment` (
+  `id` int(11) NOT NULL,
+  `name` varchar(45) NOT NULL,
+  `description` varchar(255) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `equipment`
+--
+
+INSERT INTO `equipment` (`id`, `name`, `description`) VALUES
+(1, 'Flux Capacitor', 'The flux capacitor is too complex to comprehend'),
+(2, 'Shovel', 'What needs to be said about the shovel?'),
+(3, 'Raspberry Pi', NULL),
+(4, 'Sandwich Cutter', 'Cuts sandwiches into little cirlces.');
 
 -- --------------------------------------------------------
 
@@ -60,7 +204,8 @@ CREATE TABLE `login` (
 --
 
 INSERT INTO `login` (`id`, `username`, `password`) VALUES
-(20, 'user', '$2y$10$9vFg4tJU8CtvIE9xF90vjuPza0rcttYzrL0ir2gOz/fSf56V6T97a');
+(20, 'user', '$2y$10$9vFg4tJU8CtvIE9xF90vjuPza0rcttYzrL0ir2gOz/fSf56V6T97a'),
+(28, 'user2', '$2y$10$dCTZX5yeJp9jLxLS88.C9.7/ZyW28P36ZP/9ht717uwc9ArGAuxfW');
 
 -- --------------------------------------------------------
 
@@ -74,6 +219,13 @@ CREATE TABLE `staff` (
   `last_name` varchar(45) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `staff`
+--
+
+INSERT INTO `staff` (`id`, `first_name`, `last_name`) VALUES
+('v1', 'juan', 'lopez');
+
 -- --------------------------------------------------------
 
 --
@@ -85,6 +237,17 @@ CREATE TABLE `student` (
   `first_name` varchar(45) NOT NULL,
   `last_name` varchar(45) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `student`
+--
+
+INSERT INTO `student` (`id`, `first_name`, `last_name`) VALUES
+('v000000004', 'james', 'garfield'),
+('v00000001', 'steve', 'harvey'),
+('v00000002', 'john', 'kennedy'),
+('v00000003', 'george', 'patton'),
+('v00000004', 'squidward', 'tentacles');
 
 --
 -- Indexes for dumped tables
@@ -101,7 +264,32 @@ ALTER TABLE `budget`
 --
 ALTER TABLE `budget_access`
   ADD PRIMARY KEY (`user_id`,`budget_id`),
-  ADD KEY `budget_id` (`budget_id`);
+  ADD KEY `budget_access_ibfk_2` (`budget_id`);
+
+--
+-- Indexes for table `budget_equipment`
+--
+ALTER TABLE `budget_equipment`
+  ADD PRIMARY KEY (`budget_id`,`equipment_id`,`year`),
+  ADD KEY `equipment_id` (`equipment_id`);
+
+--
+-- Indexes for table `budget_other_costs`
+--
+ALTER TABLE `budget_other_costs`
+  ADD PRIMARY KEY (`id`,`year`);
+
+--
+-- Indexes for table `domestic_travel_per_diem`
+--
+ALTER TABLE `domestic_travel_per_diem`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `equipment`
+--
+ALTER TABLE `equipment`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `login`
@@ -130,13 +318,25 @@ ALTER TABLE `student`
 -- AUTO_INCREMENT for table `budget`
 --
 ALTER TABLE `budget`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+
+--
+-- AUTO_INCREMENT for table `domestic_travel_per_diem`
+--
+ALTER TABLE `domestic_travel_per_diem`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+
+--
+-- AUTO_INCREMENT for table `equipment`
+--
+ALTER TABLE `equipment`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `login`
 --
 ALTER TABLE `login`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- Constraints for dumped tables
@@ -146,8 +346,21 @@ ALTER TABLE `login`
 -- Constraints for table `budget_access`
 --
 ALTER TABLE `budget_access`
-  ADD CONSTRAINT `budget_access_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `login` (`id`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `budget_access_ibfk_2` FOREIGN KEY (`budget_id`) REFERENCES `budget` (`id`) ON UPDATE CASCADE;
+  ADD CONSTRAINT `budget_access_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `login` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `budget_access_ibfk_2` FOREIGN KEY (`budget_id`) REFERENCES `budget` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `budget_equipment`
+--
+ALTER TABLE `budget_equipment`
+  ADD CONSTRAINT `budget_equipment_ibfk_1` FOREIGN KEY (`budget_id`) REFERENCES `budget` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `budget_equipment_ibfk_2` FOREIGN KEY (`equipment_id`) REFERENCES `equipment` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `budget_other_costs`
+--
+ALTER TABLE `budget_other_costs`
+  ADD CONSTRAINT `budget_other_costs_ibfk_1` FOREIGN KEY (`id`) REFERENCES `budget` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
