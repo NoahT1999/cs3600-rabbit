@@ -80,6 +80,26 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_budget_settings"
   }
 }
 
+if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["delete_budget"]) && !$invalid){
+  include './check_access.php';
+  $has_access = check_access($_SESSION['user'],$budget_id,$to_root="../");
+  if($has_access) {
+    include './db_connection.php';
+    $stmt = $conn->prepare("DELETE FROM budget where id=?");
+    $stmt->bind_param("s",$budget_id);
+    if($stmt->execute()){
+      $message = "Successfully updated database.";
+      $error_type = 0;
+      $current_effective_date = $start;
+      $invalid = True;
+    } else {
+      $message = "Error: ".$stmt->error;
+      $error_type = 1;
+    }
+    $stmt->close();
+    $conn->close();
+  }
+}
 ?>
 
 <!DOCTYPE html>
@@ -126,6 +146,14 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_budget_settings"
           echo '<button type="submit" name="update_budget_settings" class="submit-button">Modify</button>';
         echo '</div>';
         echo '</form>';
+        // Danger zone
+        echo '<hr>';
+        echo '<h3 class="error">Danger Zone</h3>';
+        echo '<form method="POST">';
+          echo '<div>';
+            echo '<button type="submit" name="delete_budget" class="submit-button">Delete Budget</button>';
+          echo '</div>';
+        echo '</form>';
       } else {
         if(isset($data) && !empty($data)){
           foreach($data as $row){
@@ -137,7 +165,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_budget_settings"
         }
       }
     } else {
-      echo '<a href="./dashboard.php">Return to dashboard</a>';
+      echo '<a href="../dashboard.php">Return to dashboard</a>';
     }
     ?>
     <?php
