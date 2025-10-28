@@ -138,6 +138,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_equipment_costs
     ?>
     <div class="content">
     <h1>Edit Budget Equipment</h1>
+    <p>Note that this is any equipment with a cost of over $5,000</p>
     <div id="submission-message-holder"><p></p></div>
     <?php
     if (!$invalid && $has_access){
