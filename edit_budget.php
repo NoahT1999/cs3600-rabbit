@@ -75,18 +75,19 @@ if(!isset($budget_id) || empty($budget_id)){
               array("year-4","Year 4","4"),
               array("year-5","Year 5","5")
             ); 
-                if(!isset($tab)){
-                  $tab="year-1";
-                }
+            write_to_console($tab);
+            if(!isset($tab) || empty($tab) || $tab == "year-"){
+              $tab="year-1";
+            }
 
-                foreach($names as $item){
-                  $prefix = '<button class="tablinks"';
-                  $middle = '';
-                  $suffix = ' onclick="openTab(event,\''.$item[0].'\')">'.$item[1].'</button>';
-                  if($tab == $item[0]){
-                    $middle = ' id="defaultOpen"';
-                  }
-                  echo $prefix.$middle.$suffix;
+            foreach($names as $item){
+              $prefix = '<button class="tablinks"';
+              $middle = '';
+              $suffix = ' onclick="openTab(event,\''.$item[0].'\')">'.$item[1].'</button>';
+              if($tab == $item[0]){
+                $middle = ' id="defaultOpen"';
+              }
+              echo $prefix.$middle.$suffix;
             }
           echo '</div>';
           echo '<!-- Tab content -->';
