@@ -50,85 +50,121 @@ if (!isset($_SESSION['user'])) {
 }
 
 $budget_id = $_GET["budget_id"];
-$_SESSION['type_invalid'] = False;
+
+
 
 if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_type']) && !$invalid){
-  $_SESSION['travel_type'] = verify_type($_SESSION['type_invalid'],$message,$_POST['destination-type']);
-  if($_SESSION['type_invalid']){
+  $type_invalid = NULL;
+  $_SESSION['travel_type'] = verify_type($type_invalid,$message,$_POST['destination-type']);
+  if($type_invalid){
     $_SESSION['travel_type'] = NULL;
-  } else {
-    include './database/db_connection.php';
-    $stmt = $conn->prepare("SELECT DISTINCT state,county,destination from domestic_travel_per_diem;");
-    if(execute_query($stmt,$message)){
-      $results = $stmt->get_result();
-      $data = $results->fetch_all(MYSQLI_ASSOC);
-      $nested = [];
-      $states = [];
-      $counties = [];
-      foreach($data as $row){
-        $s = $row['state'];
-        $c = $row['county'];
-        $d = $row['destination'];
-        
-        $found_state = False;
-        if(in_array($s,array_keys($states))){
-          $state = $states[$s];
-          if(in_array($c,array_keys($state))){
-            $states[$s][$c][] = $d;
-          } else {
-            $states[$s][$c] = array($c,$d);
-            write_to_console($states[$s][$c]);
-          }
+  }
+}
+
+if(!isset($_SESSION['selected_destination']) && isset($_SESSION['travel_type']) && $_SESSION['travel_type'] == 'domestic'){
+  // Builds a tree like structure for dynamic select options for destination
+  include './database/db_connection.php';
+  $stmt = $conn->prepare("SELECT DISTINCT state,county,destination from domestic_travel_per_diem;");
+  if(execute_query($stmt,$message)){
+    $results = $stmt->get_result();
+    $data = $results->fetch_all(MYSQLI_ASSOC);
+    $nested = [];
+    $states = [];
+    $counties = [];
+    foreach($data as $row){
+      $s = $row['state'];
+      $c = $row['county'];
+      $d = $row['destination'];
+      
+      $found_state = False;
+      if(in_array($s,array_keys($states))){
+        $state = $states[$s];
+        if(in_array($c,array_keys($state))){
+          $states[$s][$c][] = $d;
         } else {
-          $states[$s] = array($s);
           $states[$s][$c] = array($c,$d);
-          write_to_console($states[$s]);
-          write_to_console($states[$s][$c]);
+          //write_to_console($states[$s][$c]);
         }
+      } else {
+        $states[$s] = array($s);
+        $states[$s][$c] = array($c,$d);
+        //write_to_console($states[$s]);
+        //write_to_console($states[$s][$c]);
       }
-      $str = "";
-      foreach(array_keys($states) as $key){
-        $str .= '"'.$key.'": { ';
-        foreach(array_keys($states[$key]) as $county){
-          if($county != 0){
-            $str .= '"'.$county.'": [';
-            for($i = 1; $i < sizeof($states[$key][$county]); $i++){
-              $str .= '"'.$states[$key][$county][$i].'"';
-              if($i < sizeof($states[$key][$county])-1){
-                $str .= ', ';
-              } else {
-                $str .= '],';
-              }
+    }
+    $str = "";
+    foreach(array_keys($states) as $key){
+      $str .= '"'.$key.'": { ';
+      foreach(array_keys($states[$key]) as $county){
+        if($county != 0){
+          $str .= '"'.$county.'": [';
+          for($i = 1; $i < sizeof($states[$key][$county]); $i++){
+            $str .= '"'.$states[$key][$county][$i].'"';
+            if($i < sizeof($states[$key][$county])-1){
+              $str .= ', ';
+            } else {
+              $str .= '],';
             }
           }
         }
-        $str = substr($str,0,-1);
-        $str .= '},';
       }
       $str = substr($str,0,-1);
-      $str = "{".$str."}";
-      write_to_console($str);
-      $select_domestic_destination_json = $str;
+      $str .= '},';
     }
-    $stmt->close();
-    $conn->close();
+    $str = substr($str,0,-1);
+    $str = "{".$str."}";
+    //write_to_console($str);
+    $select_domestic_destination_json = $str;
   }
+  $stmt->close();
+  $conn->close();
 }
 
 $selected_destination = False;
 
-if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_domestic_destination']) && !$invalid){
-  $_SESSION['travel_state'] = $_POST['domestic_state'];
-  $_SESSION['travel_county'] = $_POST['domestic_county'];
-  $_SESSION['travel_destination'] = $_POST['domestic_destination'];
-  $_SESSION['selected_destination'] = True;
+if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_destination']) && !$invalid){
+  include './database/format_numbers.php';
+
+  $price = $_POST['transportation_cost'];
+  if(isset($price) && !empty($price)){
+    $code = "";
+    $fail = False;
+    if(!($code = format_number($price))){
+      // Sets various destination variables
+      if(isset($_POST['domestic'])){
+        foreach(array('domestic_state','domestic_county','domestic_destination') as $i){
+          if(!isset($_POST[$i]) || empty($_POST[$i])){
+            $fail = True;
+            $message = "You must select a destination";
+            break;
+          }
+        }
+        if(!$fail){
+          $_SESSION['travel_state'] = $_POST['domestic_state'];
+          $_SESSION['travel_county'] = $_POST['domestic_county'];
+          $_SESSION['travel_destination'] = $_POST['domestic_destination'];
+        }
+      }
+      if(!$fail){
+        $_SESSION['transportation_cost'] = $price;
+        $_SESSION['selected_destination'] = True;
+      }
+    } else {
+      $message = "Invalid number '".$price."'. ".$code;
+    }
+  } else {
+    $message = "Transportation cost must be set";
+    $error_type = 1;
+  }
   
 }
 
 if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_dates']) && !$invalid){
-  $_SESSION['departure_date'] = $_POST['departure_date'];
-  $_SESSION['return_date'] = $_POST['return_date'];
-  $_SESSION['selected_dates'] = True;
+  if(isset($_POST['departure_date']) && isset($_POST['return_date'])){
+    $_SESSION['departure_date'] = $_POST['departure_date'];
+    $_SESSION['return_date'] = $_POST['return_date'];
+    $_SESSION['selected_dates'] = True;
+  }
   
 }
 ?>
@@ -167,7 +203,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_dates']) && !$in
       <?php
       if(!$invalid){
         echo '<div id="input-form">';
-        if(!isset($_SESSION) || empty($_SESSION['travel_type']) || $_SESSION['type_invalid']){ // Gets destination-type from user
+        if(!isset($_SESSION) || empty($_SESSION['travel_type']) || !isset($_SESSION['travel_type']) || is_null($_SESSION['travel_type'])){ // Gets destination-type from user
           echo '<form method="POST">';
             echo '<select id="destination-type" name="destination-type">';
               echo '<option value="default">Select travel type</option>';
@@ -195,8 +231,8 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_dates']) && !$in
             echo '</div>';
           echo '</form>';
           } else if(!$_SESSION['selected_destination']){
+            echo '<form method="POST">';
             if($_SESSION['travel_type'] == 'domestic'){
-              echo '<form method="POST">';
                 echo '<select name="domestic_state" id="domestic_state">';
                   echo '<option value="" selected="selected">state</option>';
                 echo '</select>';
@@ -206,14 +242,21 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_dates']) && !$in
                 echo '<select name="domestic_destination" id="domestic_destination">';
                   echo '<option value="" selected="selected">destination</option>';
                 echo '</select>';
-                echo '<div>';
-                  echo '<button type="submit" name="submit_domestic_destination" class="submit-button">Next</button>';
-                echo '</div>';
-              echo '</form>';
+                echo '<input type="hidden" name="domestic" id="domestic"/>';
                 
             } else if($_SESSION['travel_type'] == 'international'){
               echo '<p>International</p>';
+              echo '<input type="hidden" name="international" id="international">';
+
             }
+            echo '<div class="split-items">';
+              echo '<label for="transportation_cost" class="tooltip">Transportation Cost (Round trip)<span class="tooltiptext">The total cost of transporting yourself to the location and back.</span></label>';
+              echo '<input type="text" name="transportation_cost" class="text-input-small" id="transportation_cost" required placeholder="$0.00" maxlength="45" onfocus="highlightLabel(\'transportation_cost\',true);" onfocusout="highlightLabel(\'transportation_cost\',false);"/>';
+            echo '</div>';
+            echo '<div>';
+              echo '<button type="submit" name="submit_destination" class="submit-button">Next</button>';
+            echo '</div>';
+          echo '</form>';
           } else if($_SESSION['selected_destination'] && $_SESSION['selected_dates']){
             echo '<p>Total</p>';
           }
@@ -227,7 +270,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_dates']) && !$in
       if(isset($message) && !empty($message)){
         echo '<script>submissionMessage("'.$message.'",'.$error_type.');</script>';
       }
-      if(isset($select_domestic_destination_json) && !empty($select_domestic_destination_json)){
+      if(!isset($_SESSION['selected_destination']) && !empty($select_domestic_destination_json)){
         echo '<script>domesticSelection(JSON.parse(\''.$select_domestic_destination_json.'\'))</script>';
       }
     ?>
