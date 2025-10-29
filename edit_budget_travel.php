@@ -18,6 +18,48 @@ function execute_query(&$stmt,&$message){
   }
 }
 
+// $start_date is a date string,
+// $depart is date object of departure date
+// $return is date object of return date
+// $debug toggles writing to console
+function calculateTripBreakdown($start_date,$depart,$return,$debug=False){
+    $working_date = date_create($start_date);
+    $start_year = array(1,date_format($working_date,'Y'));
+    
+    $debug ? write_to_console("Depart: ".date_format($depart,'Y-m-d')) : '';
+    $debug ? write_to_console("Return: ".date_format($return,'Y-m-d')) : '';
+    $debug ? write_to_console("Budget Start: ".date_format($working_date,'Y-m-d')) : '';
+    while($depart >= ($working_date = date_add($working_date,date_interval_create_from_date_string("1 year")))){
+      $debug ? write_to_console("Working: ".date_format($working_date,'Y-m-d')) : '';
+      $start_year[0] += 1;
+      $start_year[1] += 1;
+    }
+    $debug ? write_to_console("Starting year: ".$start_year[0]." ~ ".$start_year[1]) : '';
+    
+    // Determines which year of the budget various dates are in
+    $comparison_date = clone $working_date; // Stores the end of the set year
+    write_to_console("Comparison: ".date_format($comparison_date,"Y-m-d"));
+    $working_date = clone $depart;
+    $year_split = [array($start_year[0],$start_year[1],1)]; // Stores structures of (year of budget, actual year,number of days)
+    $current_year = 0; // Index of year_split array
+    while($return >= ($working_date = date_add($working_date,date_interval_create_from_date_string("1 day")))){
+      if($comparison_date > $working_date){
+        $year_split[$current_year][2] += 1;
+      } else {
+        $comparison_date = date_add($comparison_date,date_interval_create_from_date_string("1 year"));
+        $year_split[] = array($year_split[$current_year][0]+1, date_format($working_date,'Y'),1);
+        $current_year++;
+      }
+      $debug ? write_to_console("Working: (".date_format($working_date,"Y-m-d").") day: ".$year_split[$current_year][2]." for budget year ".$year_split[$current_year][0]) : '';
+
+    }
+    if($debug){
+      foreach($year_split as $y){
+        write_to_console("Budget year ".$y[0]." (".$y[1].") ~ ".$y[2]);
+      }
+    }
+  }
+
 $message = "";
 $error_type = 1;
 $invalid = False;
@@ -199,37 +241,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_trip']) && $has_
       $conn->close();
     }
     if(!$error){
-      $working_date = date_create($start_date);
-      $start_year = array(1,date_format($working_date,'Y'));
-      //write_to_console("Depart: ".date_format($depart,'Y-m-d'));
-      while($depart >= ($working_date = date_add($working_date,date_interval_create_from_date_string("1 year")))){
-        //write_to_console("Working: ".date_format($working_date,'Y-m-d'));
-        $start_year[0] += 1;
-        $start_year[1] += 1;
-      }
-      //write_to_console("Starting year: ".$start_year[0]." ~ ".$start_year[1]);
-      
-      // Determines which year of the budget various dates are in
-      $comparison_date = clone $working_date; // Stores the end of the set year
-      write_to_console("Comparison: ".date_format($comparison_date,"Y-m-d"));
-      $working_date = clone $depart;
-      $year_split = [array($start_year[0],$start_year[1],1)]; // Stores structures of (year of budget, actual year,number of days)
-      $current_year = 0; // Index of year_split array
-      while($return >= ($working_date = date_add($working_date,date_interval_create_from_date_string("1 day")))){
-        //write_to_console("Working: ".date_format($working_date,"Y-m-d"));
-        if($comparison_date > $working_date){
-          $year_split[$current_year][2] += 1;
-          //write_to_console($year_split[$current_year][2]);
-        } else {
-          $comparison_date = date_add($comparison_date,date_interval_create_from_date_string("1 year"));
-          $year_split[] = array($year_split[$current_year][0]+1, date_format($working_date,'Y'),1);
-          $current_year++;
-        }
-
-      }
-      //foreach($year_split as $y){
-        //write_to_console("Budget year ".$y[0]." (".$y[1].") ~ ".$y[2]);
-      //}
+      calculateTripBreakdown($start_date,$depart,$return,$debug=False);
     }
   }
 
