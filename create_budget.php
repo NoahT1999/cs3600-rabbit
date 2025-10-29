@@ -56,7 +56,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_budget'])){
     if(!$fail){
       // Add each year into budget_other_costs
       $stmt = $conn->prepare("INSERT INTO budget_other_costs (id,year) VALUES (?,?)");
-      for($year = 1; $year <= $length; ++$year){
+      for($year = 1; $year <= 5; ++$year){
         $stmt->bind_param("ss",$budget_id,$year);
         if(!$stmt->execute()){
           $message = "Failed to add year ".$year." to budget_other_costs.";
