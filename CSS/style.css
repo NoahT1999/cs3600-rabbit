@@ -585,7 +585,7 @@ code {
   padding: 0.6em;
 }
 
-.budget_table td,input{
+.budget_table td, .budget_table input{
   text-align: center;
 }
 
@@ -598,5 +598,27 @@ code {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
+}
+
+.icon-button {
+  background-color: transparent;
+  border: none;
+  display: flex;
+  max-width: 100%;
+  margin: 1em auto;
+}
+
+.icon-button span {
+  color: var(--font-color);
+  transition: color 0.5s;
+}
+
+.icon-button span:hover {
+  color: var(--primary-color);
+}
+
+.icon-button span.size-48 {
+  font-size: 48px;
+  font-variation-settings: 'OPSZ' 48;
 }

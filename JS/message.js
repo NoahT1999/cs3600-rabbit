@@ -4,8 +4,13 @@ function submissionMessage(text,error = 0) {
   console.log(error);
   holder.textContent = text;
   if (error == 0) {
-    holder.className += "success";
+    holder.classList.add("success");
+    holder.classList.remove("error");
   } else if (error == 1){
-    holder.className += "error";
+    holder.classList.add("error");
+    holder.classList.remove("success");
+  } else {
+    holder.classList.remove("error");
+    holder.classList.remove("success");
   }
 }
