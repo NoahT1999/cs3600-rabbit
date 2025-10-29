@@ -126,6 +126,7 @@ if(!isset($budget_id) || empty($budget_id)){
     <script src="./JS/title.js"></script>
     <script src="./JS/message.js"></script>
     <script src="./JS/edit_budget.js"></script>
+    <script src="./JS/highlight_label.js"></script>
   </head>
   <body>
     <!--[if lt IE 7]>
@@ -140,7 +141,7 @@ if(!isset($budget_id) || empty($budget_id)){
     <div class="content">
       <div class="split-items">
         <h1>Edit Budget</h1>
-        <button onclick="toggle_edit_mode(['other_costs']);">Toggle Edit Mode</button>
+        <button onclick="toggle_edit_mode(['equipment','other_costs']);">Toggle Edit Mode</button>
       </div>
       <div id="submission-message-holder"><p></p></div>
         <?php
@@ -169,7 +170,8 @@ if(!isset($budget_id) || empty($budget_id)){
                 if(isset($equipment) && !empty($equipment)){
                   foreach(array_keys($equipment) as $key){
                     echo '<tr>';
-                    echo '<td>'.ucfirst(str_replace("_"," ",$key)).'</td>';
+                    // View mode
+                    echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>';
                     for($i = 1; $i < $length+1; $i++){
                       $cost = $equipment[$key][$i];
                       if($cost == "0.00" or $cost == 0){
@@ -177,7 +179,10 @@ if(!isset($budget_id) || empty($budget_id)){
                       } else {
                         $cost = "$".$cost;
                       }
-                      echo '<td>'.$cost.'</td>';
+                      // View mode
+                      echo '<td class="data-view">'.$cost.'</td>';
+                      // Edit mode
+                      echo '<td class="data-edit hidden"><input id="equipment_'.$key.'_'.$i.'" name="equipment_'.$key.'_'.$i.'" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\'equipment_'.$key.'_'.$i.'\',true);" onfocusout="highlightHeader(\'equipment_'.$key.'_'.$i.'\',false);"></input></td>';
                     }
                     echo '</tr>';
                   }
@@ -197,8 +202,7 @@ if(!isset($budget_id) || empty($budget_id)){
                 if(isset($other_costs) && !empty($other_costs)){
                   foreach(array_keys($other_costs) as $key){
                     echo '<tr>';
-                    // Normal
-                    echo '<td>'.ucfirst(str_replace("_"," ",$key)).'</td>';
+                    echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>';
                     for($i = 1; $i < $length+1; $i++){
                       $cost = $other_costs[$key][$i];
                       if($cost == "0.00" or $cost == 0){
@@ -206,17 +210,10 @@ if(!isset($budget_id) || empty($budget_id)){
                       } else {
                         $cost = "$".$cost;
                       }
+                      // View mode
                       echo '<td class="data-view">'.$cost.'</td>';
-                    }
-                    // Edit Mode
-                    for($i = 1; $i < $length+1; $i++){
-                      $cost = $other_costs[$key][$i];
-                      if($cost == "0.00" or $cost == 0){
-                        $cost = '-';
-                      } else {
-                        $cost = "$".$cost;
-                      }
-                      echo '<td class="data-edit hidden"><input type="text" placeholder="'.$cost.'"></input></td>';
+                      // Edit mode
+                      echo '<td class="data-edit hidden"><input id="other_costs_'.$key.'_'.$i.'" name="other_costs_'.$key.'_'.$i.'" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\'other_costs_'.$key.'_'.$i.'\',true);" onfocusout="highlightHeader(\'other_costs_'.$key.'_'.$i.'\',false);"></input></td>';
                     }
                     echo '</tr>';
                   }
