@@ -16,6 +16,10 @@ if (!isset($_SESSION['user'])) {
 
 $tab = 'year-'.$_GET["year"];
 $budget_id = $_GET["budget_id"];
+$length = "";
+$error = False;
+
+$other_costs = [];
 
 if(!isset($budget_id) || empty($budget_id)){
   $has_access = False;
@@ -27,6 +31,52 @@ if(!isset($budget_id) || empty($budget_id)){
   if(!$has_access){
     $message = "Access denied.";
     $error_type = 1;
+  } else {
+    include './database/db_connection.php';
+    $stmt = $conn->prepare("SELECT length from budget where id=?");
+    $stmt->bind_param("s",$budget_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_assoc();
+    $stmt->close();
+    if(isset($data) && !empty($data)){
+      $length = $data['length'];
+
+      // Fetch other costs and store them
+      $stmt = $conn->prepare("SELECT * from budget_other_costs where id=?");
+      $stmt->bind_param("s",$budget_id);
+      if($stmt->execute()){
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        if(isset($data) && !empty($data)){
+          $keys = array_keys($data[0]);
+          unset($keys[array_search('id',$keys)]);
+          write_to_console($keys);
+          foreach($data as $row){
+            foreach($keys as $key){
+              if($key != 'year'){
+                if(!isset($other_costs[$key])){
+                  $other_costs[$key] = [];
+                }
+                $other_costs[$key][$row['year']] = $row[$key];
+              }
+            }
+          }
+        } else {
+          $message = "Failed to fetch other costs.";
+          $error = True;
+        }
+      } else {
+        $message = "Failed to fetch other costs.";
+        $error = True;
+      }
+
+    } else {
+      $message = "Error fetching budget.";
+      $error = True;
+    }
+    $conn->close();
   }
 }
 
@@ -48,7 +98,6 @@ if(!isset($budget_id) || empty($budget_id)){
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="./CSS/style.css">
     <script src="./JS/title.js"></script>
-    <script src="./JS/tabs.js"></script>
     <script src="./JS/message.js"></script>
   </head>
   <body>
@@ -65,52 +114,65 @@ if(!isset($budget_id) || empty($budget_id)){
       <h1>Edit Budget</h1>
       <div id="submission-message-holder"><p></p></div>
         <?php
-        if($has_access){
-          echo '<div class="tab">';
-            echo '<div class="tab-buttons">';
-            $names = array(
-              array("year-1","Year 1","1"),
-              array("year-2","Year 2","2"),
-              array("year-3","Year 3","3"),
-              array("year-4","Year 4","4"),
-              array("year-5","Year 5","5")
-            ); 
-            write_to_console($tab);
-            if(!isset($tab) || empty($tab) || $tab == "year-"){
-              $tab="year-1";
-            }
-
-            foreach($names as $item){
-              $prefix = '<button class="tablinks"';
-              $middle = '';
-              $suffix = ' onclick="openTab(event,\''.$item[0].'\')">'.$item[1].'</button>';
-              if($tab == $item[0]){
-                $middle = ' id="defaultOpen"';
-              }
-              echo $prefix.$middle.$suffix;
-            }
-          echo '</div>';
-          echo '<!-- Tab content -->';
-          
-
-
-          foreach($names as $item){
-            echo '<div id="'.$item[0].'" class="tabcontent">';
-            echo '<div class="tab-title">';
-            echo '<h3>'.$item[1].'</h3>';
-            echo '</div>';
-            echo '<div>';
-            echo '<ul class="overview-list">';
-              echo '<li><a href="edit_budget_personnel.php?year='.$item[2].'&budget_id='.$budget_id.'">Personnel</a></li>';
-              echo '<li><a href="edit_budget_other_personnel.php?year='.$item[2].'&budget_id='.$budget_id.'">Other Personnel</a></li>';
-              echo '<li><a href="edit_budget_fringe.php?year='.$item[2].'&budget_id='.$budget_id.'">Fringe</a></li>';
-              echo '<li><a href="edit_budget_equipment.php?year='.$item[2].'&budget_id='.$budget_id.'">Large Equipment</a></li>';
-              echo '<li><a href="edit_budget_travel.php?year='.$item[2].'&budget_id='.$budget_id.'">Travel</a></li>';
-              echo '<li><a href="edit_budget_other_costs.php?year='.$item[2].'&budget_id='.$budget_id.'">Other Costs</a></li>';
-            echo '</ul>';
-            echo '</div>';
-            echo '</div>';
-          }  
+        if($has_access && !$error){
+          $table_width = $length + 1;
+          echo '<table class="budget_table">';
+            echo '<thead>';
+              echo '<tr>';
+                echo '<th></th>';
+                for($i = 0; $i < $length; $i++){
+                  echo '<th>Year '.($i+1).'</th>';
+                }
+              echo '</tr>';
+            echo '</thead>';
+            echo '<tbody>';
+              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Personnel</th></tr>';
+              echo '<tr>';
+                echo '<td></td>';
+                for($i = 0; $i < $length; $i++){
+                  echo '<td>Value '.($i+1).'</td>';
+                }
+              echo '</tr>';
+            echo '</tbody>';
+            echo '<tbody>';
+              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Large Equipment</th></tr>';
+              echo '<tr>';
+                echo '<td></td>';
+                for($i = 0; $i < $length; $i++){
+                  echo '<td>Value '.($i+1).'</td>';
+                }
+              echo '</tr>';
+            echo '</tbody>';
+            echo '<tbody>';
+              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Travel</th></tr>';
+              echo '<tr>';
+                echo '<td></td>';
+                for($i = 0; $i < $length; $i++){
+                  echo '<td>Value '.($i+1).'</td>';
+                }
+              echo '</tr>';
+            echo '</tbody>';
+            echo '<tbody>';
+              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Other Costs</th></tr>';
+                if(isset($other_costs) && !empty($other_costs)){
+                  foreach(array_keys($other_costs) as $key){
+                    echo '<tr>';
+                    echo '<td>'.ucfirst(str_replace("_"," ",$key)).'</td>';
+                    write_to_console(array_keys($other_costs[$key]));
+                    for($i = 1; $i < $length+1; $i++){
+                      $cost = $other_costs[$key][$i];
+                      if($cost == "0.00" or $cost == 0){
+                        $cost = '-';
+                      } else {
+                        $cost = "$".$cost;
+                      }
+                      echo '<td>'.$cost.'</td>';
+                    }
+                    echo '</tr>';
+                  }
+                }
+            echo '</tbody>';
+          echo '</table>';
         } else {
           echo '<a href="./dashboard.php">Return to dashboard.</a>';
         }
@@ -118,10 +180,6 @@ if(!isset($budget_id) || empty($budget_id)){
           echo '<script>submissionMessage("'.$message.'",'.$error_type.');</script>';
         }
         ?>
-        <script>
-          // Get the element with id="defaultOpen" and click on it
-          document.getElementById("defaultOpen").click();
-        </script>
       </div>
     </div>
     <script src="" async defer></script>
@@ -129,6 +187,6 @@ if(!isset($budget_id) || empty($budget_id)){
   </body>
   <?php
     include 'database/foot.php';
-    footer(26,"October",2025,'Josh Gillum');
+    footer(28,"October",2025,'Josh Gillum');
   ?>
 </html>

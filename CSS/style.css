@@ -573,3 +573,18 @@ code {
 .highlighted-text {
   color: var(--font-color-highlight);
 }
+
+.budget_table {
+  table-layout: fixed;
+  width: 100%;
+  margin: 1em auto;
+  border-collapse: collapse;
+}
+
+.budget_table th,td{
+  padding: 0.6em;
+}
+
+.table_subsection_header {
+  text-align: left;
+}
