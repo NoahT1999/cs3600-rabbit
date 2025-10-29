@@ -178,20 +178,25 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_trip']) && $has_
     }
 
     if(!$error){
-      include 'database/db_connection';
+      include './database/db_connection.php';
       if($type == 'domestic'){
-        $stmt = $conn->prepare("SELECT season_start, season_end, lodging, mie FROM domestic_travel_per_diem WHERE state=?, destination=?, county=?");
+        $stmt = $conn->prepare("SELECT season_start, season_end, lodging, mie FROM domestic_travel_per_diem WHERE state=? AND destination=? AND county=?");
         $stmt->bind_param("sss",$d_state,$d_destination,$d_county);
         if(execute_query($stmt,$message)){
           $result = $stmt->get_result();
           $destination_pricing = $result->fetch_all(MYSQLI_ASSOC);
+          if(sizeof($destination_pricing) == 0){
+            $message = "Failed fetching per diem pricing";
+            $error = True;
+            $error_type = 1;
+          }
           $stmt->close();
-          $conn->close();
         } else {
           $error = True;
           $error_type = 1;
         }
       }
+      $conn->close();
     }
     if(!$error){
       $working_date = date_create($start_date);
