@@ -21,11 +21,12 @@ $error_type = 1;
 $invalid = 0;
 $has_access = False;
 $current_effective_date = "";
+$current_length = "";
 
 
 if (!$invalid){
   include './db_connection.php';
-  $stmt = $conn->prepare("SELECT budget_access.budget_id, budget.name, budget.effective_date from budget_access JOIN budget on budget.id = budget_access.budget_id WHERE user_id=?");
+  $stmt = $conn->prepare("SELECT budget_access.budget_id, budget.name, budget.effective_date,budget.length from budget_access JOIN budget on budget.id = budget_access.budget_id WHERE user_id=?");
   $stmt->bind_param("s",$_SESSION['user']);
   if($stmt->execute()){
     $result = $stmt->get_result();
@@ -40,6 +41,7 @@ if (!$invalid){
           if($row['budget_id'] == $budget_id){
             $has_access = True;
             $current_effective_date = $row['effective_date'];
+            $current_length = $row['length'];
             break;
           }
         }
@@ -62,8 +64,9 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_budget_settings"
   $has_access = check_access($_SESSION['user'],$budget_id,$to_root="../");
   if($has_access) {
     $start = $_POST['effective_date'];
+    $length = $_POST['length'];
+    include './db_connection.php';
     if(isset($start) && !empty($start)){
-      include './db_connection.php';
       $stmt = $conn->prepare("UPDATE budget SET effective_date=? where id=?");
       $stmt->bind_param("ss",$start,$budget_id);
       if($stmt->execute()){
@@ -75,8 +78,21 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["update_budget_settings"
         $error_type = 1;
       }
       $stmt->close();
-      $conn->close();
     }
+    if(isset($length) && !empty($length)){
+      $stmt = $conn->prepare("UPDATE budget SET length=? where id=?");
+      $stmt->bind_param("ss",$length,$budget_id);
+      if($stmt->execute()){
+        $message = "Successfully updated database.";
+        $error_type = 0;
+        $current_length = $length;
+      } else {
+        $message = "Error: ".$stmt->error;
+        $error_type = 1;
+      }
+      $stmt->close();
+    }
+    $conn->close();
   }
 }
 
@@ -142,6 +158,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["delete_budget"]) && !$i
           echo '<label for="effective_date" class="tooltip">Effective Start Date<span class="tooltiptext">The day that this budget takes effect on</span></label>';
             echo '<input type="date" id="effective_date" name="effective_date" onfocus="highlightLabel(\'effective_date\',true);" onfocusout="highlightLabel(\'effective_date\',false);">';
           echo '</div>';
+          echo '<div class="split-items">';
+          echo '<label for="length" class="tooltip">Budget Length<span class="tooltiptext">The number of years that this budget will span.</span></label>';
+            echo '<input type="number" min="1" max="5" value="'.$current_length.'" id="length" name="length" onfocus="highlightLabel(\'length\',true);" onfocusout="highlightLabel(\'length\',false);">';
+          echo '</div>';
         echo '<div>';
           echo '<button type="submit" name="update_budget_settings" class="submit-button">Modify</button>';
         echo '</div>';
@@ -184,7 +204,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["delete_budget"]) && !$i
   </body>
   <?php
     include './foot.php';
-    footer(27,"October",2025,'Josh Gillum');
+    footer(28,"October",2025,'Josh Gillum');
   ?>
 </html>
 

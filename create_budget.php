@@ -21,56 +21,60 @@ $fail = False;
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_budget'])){
   $name = $_POST['name'];
   $effective_date = $_POST['effective_date'];
-  write_to_console($name);
-  include './database/db_connection.php';
+  $length = $_POST['length'];
+  if(is_numeric($length)){
+    write_to_console($name);
+    include './database/db_connection.php';
 
-  // Create budget in budget table
-  if(isset($name) && isset($effective_date)){
-    $stmt = $conn->prepare("INSERT INTO budget (name,effective_date) VALUES (?,?)");
-    $stmt->bind_param("ss",$name,$effective_date);
-    if(!$stmt->execute()){
-      $message = "Failed to add new budget.";
-      $fail = True;
-    } else {
-      $budget_id = $stmt->insert_id;
-      $stmt->close();
-    }
-  } else {
-    $fail = True;
-  }
-
-  if(!$fail){
-    // Give user access to budget in budget_access table
-    $stmt = $conn->prepare("INSERT INTO budget_access (user_id,budget_id) VALUES (?,?)");
-    $stmt->bind_param("ss",$_SESSION['user'],$budget_id);
-    if(!$stmt->execute()){
-      $message = "Failed to add budget access.";
-      $fail = True;
-    } else {
-      $stmt->close();
-    }
-  }
-
-  if(!$fail){
-    // Add each year into budget_other_costs
-    $stmt = $conn->prepare("INSERT INTO budget_other_costs (id,year) VALUES (?,?)");
-    foreach(array(1,2,3,4,5) as $year){
-      $stmt->bind_param("ss",$budget_id,$year);
+    // Create budget in budget table
+    if(isset($name) && isset($effective_date) && isset($length)){
+      $stmt = $conn->prepare("INSERT INTO budget (name,effective_date,length) VALUES (?,?,?)");
+      $stmt->bind_param("sss",$name,$effective_date,$length);
       if(!$stmt->execute()){
-        $message = "Failed to add year ".$year." to budget_other_costs.";
+        $message = "Failed to add new budget.";
         $fail = True;
-        break;
+      } else {
+        $budget_id = $stmt->insert_id;
+        $stmt->close();
+      }
+    } else {
+      $fail = True;
+    }
+
+    if(!$fail){
+      // Give user access to budget in budget_access table
+      $stmt = $conn->prepare("INSERT INTO budget_access (user_id,budget_id) VALUES (?,?)");
+      $stmt->bind_param("ss",$_SESSION['user'],$budget_id);
+      if(!$stmt->execute()){
+        $message = "Failed to add budget access.";
+        $fail = True;
+      } else {
+        $stmt->close();
       }
     }
-    if(!$fail){
-      $stmt->close();
-    }
-  }
 
-  $conn->close();
-  if(!$fail){
-    $message = "Successfully created new budget.";
-    $error_type = 0;
+    if(!$fail){
+      // Add each year into budget_other_costs
+      $stmt = $conn->prepare("INSERT INTO budget_other_costs (id,year) VALUES (?,?)");
+      for($year = 1; $year <= $length; ++$year){
+        $stmt->bind_param("ss",$budget_id,$year);
+        if(!$stmt->execute()){
+          $message = "Failed to add year ".$year." to budget_other_costs.";
+          $fail = True;
+          break;
+        }
+      }
+      if(!$fail){
+        $stmt->close();
+      }
+
+    }
+
+    $conn->close();
+    if(!$fail){
+      $message = "Successfully created new budget.";
+      $error_type = 0;
+    }
   }
 }
 ?>
@@ -116,6 +120,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_budget'])){
           echo '<label for="effective_date" class="tooltip">Effective Start Date<span class="tooltiptext">The day that this budget takes effect on</span></label>';
             echo '<input type="date" required id="effective_date" name="effective_date" onfocus="highlightLabel(\'effective_date\',true);" onfocusout="highlightLabel(\'effective_date\',false);">';
           echo '</div>';
+          echo '<div class="split-items">';
+          echo '<label for="length" class="tooltip">Budget Length<span class="tooltiptext">The number of years that this budget will span.</span></label>';
+            echo '<input type="number" min="1" max="5" value="5" required id="length" name="length" onfocus="highlightLabel(\'length\',true);" onfocusout="highlightLabel(\'length\',false);">';
+          echo '</div>';
         ?>
         <div>
           <button type="submit" name="create_budget" class="styled-button submit-button">Create</button>
@@ -135,15 +143,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['create_budget'])){
     <script src="" async defer></script>
     <hr id="foot-rule">
   </body>
-  <footer>
-    <div class="split-items">
-      <p>Last updated: <span>26 October 2025</span></p>
-      <p>Author: Josh Gillum</p>
-    </div>
-    <div class="split-items">
-      <a href="../cookies.html">cookies</a>
-      <a href="../privacy.html">privacy policy</a>
-      <a href="../terms.html">terms and conditions</a>
-    </div>
-  </footer>
+  <?php
+    include 'database/foot.php';
+    footer(28,"October",2025,'Josh Gillum');
+  ?>
 </html>
