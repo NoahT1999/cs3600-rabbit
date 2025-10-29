@@ -20,6 +20,7 @@ $length = "";
 $error = False;
 
 $other_costs = [];
+$equipment = [];
 
 if(!isset($budget_id) || empty($budget_id)){
   $has_access = False;
@@ -52,7 +53,6 @@ if(!isset($budget_id) || empty($budget_id)){
         if(isset($data) && !empty($data)){
           $keys = array_keys($data[0]);
           unset($keys[array_search('id',$keys)]);
-          write_to_console($keys);
           foreach($data as $row){
             foreach($keys as $key){
               if($key != 'year'){
@@ -70,6 +70,32 @@ if(!isset($budget_id) || empty($budget_id)){
       } else {
         $message = "Failed to fetch other costs.";
         $error = True;
+      }
+
+      // Fetches large equipment data
+      if(!$error){
+        $stmt = $conn->prepare("SELECT b.year, b.cost, e.name FROM budget_equipment as b JOIN equipment as e on b.equipment_id = e.id WHERE b.budget_id=?");
+        $stmt->bind_param("s",$budget_id);
+        if($stmt->execute()){
+          $result = $stmt->get_result();
+          $data = $result->fetch_all(MYSQLI_ASSOC);
+          $stmt->close();
+          if(isset($data) && !empty($data)){
+            foreach($data as $row){
+              $key = $row['name'];
+                if(!isset($equipment[$key])){
+                  $equipment[$key] = [];
+                }
+                $equipment[$key][$row['year']] = $row['cost'];
+              }
+          } else {
+            $message = "Failed to fetch large equipment.";
+            $error = True;
+          }
+        } else {
+          $message = "Failed to fetch large equipment.";
+          $error = True;
+        }
       }
 
     } else {
@@ -99,6 +125,7 @@ if(!isset($budget_id) || empty($budget_id)){
     <link rel="stylesheet" href="./CSS/style.css">
     <script src="./JS/title.js"></script>
     <script src="./JS/message.js"></script>
+    <script src="./JS/edit_budget.js"></script>
   </head>
   <body>
     <!--[if lt IE 7]>
@@ -111,7 +138,10 @@ if(!isset($budget_id) || empty($budget_id)){
       breadcrumbs(array(array("home","./index.php"),array("budgets","./dashboard.php"),array("edit-budget","./javascript:location.reload();")));
     ?>
     <div class="content">
-      <h1>Edit Budget</h1>
+      <div class="split-items">
+        <h1>Edit Budget</h1>
+        <button onclick="toggle_edit_mode(['other_costs']);">Toggle Edit Mode</button>
+      </div>
       <div id="submission-message-holder"><p></p></div>
         <?php
         if($has_access && !$error){
@@ -125,7 +155,7 @@ if(!isset($budget_id) || empty($budget_id)){
                 }
               echo '</tr>';
             echo '</thead>';
-            echo '<tbody>';
+            echo '<tbody id="personnel">';
               echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Personnel</th></tr>';
               echo '<tr>';
                 echo '<td></td>';
@@ -134,16 +164,26 @@ if(!isset($budget_id) || empty($budget_id)){
                 }
               echo '</tr>';
             echo '</tbody>';
-            echo '<tbody>';
+            echo '<tbody id="equipment">';
               echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Large Equipment</th></tr>';
-              echo '<tr>';
-                echo '<td></td>';
-                for($i = 0; $i < $length; $i++){
-                  echo '<td>Value '.($i+1).'</td>';
+                if(isset($equipment) && !empty($equipment)){
+                  foreach(array_keys($equipment) as $key){
+                    echo '<tr>';
+                    echo '<td>'.ucfirst(str_replace("_"," ",$key)).'</td>';
+                    for($i = 1; $i < $length+1; $i++){
+                      $cost = $equipment[$key][$i];
+                      if($cost == "0.00" or $cost == 0){
+                        $cost = '-';
+                      } else {
+                        $cost = "$".$cost;
+                      }
+                      echo '<td>'.$cost.'</td>';
+                    }
+                    echo '</tr>';
+                  }
                 }
-              echo '</tr>';
             echo '</tbody>';
-            echo '<tbody>';
+            echo '<tbody id="travel">';
               echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Travel</th></tr>';
               echo '<tr>';
                 echo '<td></td>';
@@ -152,13 +192,13 @@ if(!isset($budget_id) || empty($budget_id)){
                 }
               echo '</tr>';
             echo '</tbody>';
-            echo '<tbody>';
+            echo '<tbody id="other_costs">';
               echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Other Costs</th></tr>';
                 if(isset($other_costs) && !empty($other_costs)){
                   foreach(array_keys($other_costs) as $key){
                     echo '<tr>';
+                    // Normal
                     echo '<td>'.ucfirst(str_replace("_"," ",$key)).'</td>';
-                    write_to_console(array_keys($other_costs[$key]));
                     for($i = 1; $i < $length+1; $i++){
                       $cost = $other_costs[$key][$i];
                       if($cost == "0.00" or $cost == 0){
@@ -166,7 +206,17 @@ if(!isset($budget_id) || empty($budget_id)){
                       } else {
                         $cost = "$".$cost;
                       }
-                      echo '<td>'.$cost.'</td>';
+                      echo '<td class="data-view">'.$cost.'</td>';
+                    }
+                    // Edit Mode
+                    for($i = 1; $i < $length+1; $i++){
+                      $cost = $other_costs[$key][$i];
+                      if($cost == "0.00" or $cost == 0){
+                        $cost = '-';
+                      } else {
+                        $cost = "$".$cost;
+                      }
+                      echo '<td class="data-edit hidden"><input type="text" placeholder="'.$cost.'"></input></td>';
                     }
                     echo '</tr>';
                   }

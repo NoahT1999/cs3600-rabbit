@@ -585,6 +585,14 @@ code {
   padding: 0.6em;
 }
 
+.budget_table tbody{
+  border-bottom: 1px dotted var(--font-color); 
+}
+
 .table_subsection_header {
   text-align: left;
+}
+
+.hidden {
+  display: none;
 }
