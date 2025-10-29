@@ -1,4 +1,5 @@
 function validateTravelForm(formId,budget_start,budget_length){
+  console.log(budget_start);
   let form = document.forms[formId];
   let type = form["destination-type"];
   
@@ -24,15 +25,61 @@ function validateTravelForm(formId,budget_start,budget_length){
     return false;
   }
   if(budget_start && budget_length){
-    console.log("Start: ", budget_start," End: ",budget_start + budget_length);
+    var split = budget_start.split("-");
+    split[0] = Number(split[0])+budget_length;
+    budget_end = split.join("-")
+    console.log("Start: ", budget_start," End: ",budget_end);
     if(depart_date.value < budget_start){
       submissionMessage("Departure date can not be before the start of the budget",1);
       return false;
     }
-    if(return_date.value > budget_start + budget_length){
+    if(return_date.value >= budget_end){
       submissionMessage("Return date can not be after the end of the budget",1);
       return false;
     }
+  } else {
+    submissionMessage("Internal error. No budget start or length.",1);
+    return false;
   }
-  return false;
+  let cost = form["transportation_cost"];
+  let working_cost = cost.value.trim();
+  if(working_cost.indexOf("$") > 0){
+    submissionMessage("Invalid placement of $ symbol. It may only appear at the beginning of the number.",1);
+  } else {
+    if(working_cost[0] == "$"){
+      working_cost = working_cost.slice(1);
+    }
+    let split = working_cost.split(".");
+    if(split.length == 2){
+      if(split[0].length > 8){
+        submissionMessage("Whole number portion is too large.",1);
+        return false;
+      }
+      if(isNaN(split[0])){
+        submissionMessage("Invalid character in whole number portion of number.",1);
+        return false;
+      }
+      if(split[1].length > 2){
+        split[1] = split[1].slice(0,2);
+      }
+      if(isNaN(split[1])){
+        submissionMessage("Invalid character in decimal portion of number.",1);
+        return false;
+      }
+    } else if(split.length == 1) {
+      if(split[0].length > 8){
+        submissionMessage("Whole number portion is too large.",1);
+        return false;
+      }
+      if(isNaN(split[0])){
+        submissionMessage("Invalid character in whole number portion of number.",1);
+        return false;
+      }
+    } else {
+      submissionMessage("Invalid number of decimal places \'.\'.",1);
+      return false;
+    }
+  }
+  submissionMessage("Submitting to the database.",0);
+  return true;
 }

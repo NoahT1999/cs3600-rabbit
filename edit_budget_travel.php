@@ -8,26 +8,6 @@ function write_to_console($data) {
  echo "<script>console.log('Console: " . $console . "' );</script>";
 }
 
-function verify_type(&$type_invalid,&$message,$value){
-  $type_invalid = True;
-  if(strtolower(trim($value)) == 'domestic'){
-    $type_invalid = False;
-    $type = 'domestic';
-  }
-  else if(strtolower(trim($value)) == 'international'){
-    $type_invalid = False;
-    $type = 'international';
-  }
-  if($type_invalid){
-    if($value == 'default'){
-      $message = "You must select either Domestic or International";
-    } else {
-      $message = "Invalid destination type"; 
-    }
-    return NULL;
-  }
-  return $type;
-}
 
 function execute_query(&$stmt,&$message){
   if($stmt->execute()){
@@ -44,8 +24,9 @@ $invalid = False;
 $direct = array("./database/login.php","Login");
 $budget_id = $_GET["budget_id"];
 $has_access = False;
-$start_date = "";
-$length = "";
+$start_date = NULL;
+$length = NULL;
+$year_of_budget = NULL;
 session_start();
 // Check if user is logged in, if not redirect to login page
 if (!isset($_SESSION['user'])) {
@@ -85,8 +66,8 @@ if($has_access && !$invalid){
   }
 }
 
+// builds a tree like structure for dynamic select options for destination
 if($has_access && !$invalid){
-  // builds a tree like structure for dynamic select options for destination
   include './database/db_connection.php';
   $stmt = $conn->prepare("SELECT DISTINCT state,county,destination from domestic_travel_per_diem;");
   if(execute_query($stmt,$message)){
@@ -145,61 +126,104 @@ if($has_access && !$invalid){
 }
 
 
-if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_destination']) && !$invalid){
-  include './database/format_numbers.php';
 
-  $price = $_POST['transportation_cost'];
-  if(isset($price) && !empty($price)){
-    $code = "";
-    $fail = False;
-    if(!($code = format_number($price))){
-      // Sets various destination variables
-      if(isset($_POST['domestic'])){
-        foreach(array('domestic_state','domestic_county','domestic_destination') as $i){
-          if(!isset($_POST[$i]) || empty($_POST[$i])){
-            $fail = True;
-            $message = "You must select a destination";
-            break;
-          }
-        }
-        if(!$fail){
-          $_SESSION['travel_state'] = $_POST['domestic_state'];
-          $_SESSION['travel_county'] = $_POST['domestic_county'];
-          $_SESSION['travel_destination'] = $_POST['domestic_destination'];
-        }
-      }
-      if(!$fail){
-        $_SESSION['transportation_cost'] = $price;
-        $_SESSION['selected_destination'] = True;
-      }
-    } else {
-      $message = "Invalid number '".$price."'. ".$code;
-    }
-  } else {
-    $message = "Transportation cost must be set";
-    $error_type = 1;
-  }
-  
-}
+// Verifies the form is filled out correctly and performs various operations
+if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_trip']) && $has_access && !$invalid){
+  $message = "Received PHP";
+  $error_type = 0;
 
-if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_dates']) && !$invalid){
-  write_to_console(array_keys($_POST));
-  if(isset($_POST['departure_date']) && isset($_POST['return_date'])){
-    $depart = $_POST['departure_date'];
-    $return = $_POST['return_date'];
-    if($depart <= $return){
-      include './database/db_connection';
-      $stmt = $conn->prepare("SELECT effective_date, year from budget where budget_id=?");
-    } else {
-      $message = "Departure date can not be later than return date.";
-    }
-    if(False){
-      $_SESSION['departure_date'] = $depart;
-      $_SESSION['return_date'] = $return;
-      $_SESSION['selected_dates'] = True;
+  $type = $_POST['destination-type'];
+  $d_state = $_POST['domestic_state'];
+  $d_county = $_POST['domestic_county'];
+  $d_destination = $_POST['domestic_destination'];
+
+  $depart = $_POST['departure_date'];
+  $return = $_POST['return_date'];
+
+  $cost = $_POST['transportation_cost'];
+
+  $error = False;
+  if(($type ?? '') == 'domestic'){
+    if(empty($d_state) || empty($d_county) || empty($d_destination)){
+      $message = "Invalid domestic destination.";
+      $error_type = 1;
+      $error = True;
     }
   }
-  
+
+  if(!$error && !empty($depart) && !empty($return)){
+    $depart = date_create($depart);
+    $return = date_create($return);
+    if($depart > $return){
+      $message = "Departure date can not be after the return date.";
+      $error_type = 1;
+      $error = True;
+    }
+    if(!$error && $depart < $start_date){
+      $message = "Departure date can not be before the start of the budget.";
+      $error_type = 1;
+      $error = True;
+    }
+    if(!$error){
+      $end_of_budget = clone $depart;
+      $end_of_budget = date_add($end_of_budget,date_interval_create_from_date_string($length." years"));
+      //write_to_console("END: ".date_format($end_of_budget,'Y-m-d'));
+      if($return >= $end_of_budget){
+        $message = "Return date can not be after the end of the budget.";
+        $error_type = 1;
+        $error = True;
+      }
+    }
+    if(!$error){
+      $working_date = date_create($start_date);
+      $start_year = array(1,date_format($working_date,'Y'));
+      //write_to_console("Depart: ".date_format($depart,'Y-m-d'));
+      while($depart >= ($working_date = date_add($working_date,date_interval_create_from_date_string("1 year")))){
+        //write_to_console("Working: ".date_format($working_date,'Y-m-d'));
+        $start_year[0] += 1;
+        $start_year[1] += 1;
+      }
+      //write_to_console("Starting year: ".$start_year[0]." ~ ".$start_year[1]);
+      
+      // Determines which year of the budget various dates are in
+      $comparison_date = clone $working_date; // Stores the end of the set year
+      write_to_console("Comparison: ".date_format($comparison_date,"Y-m-d"));
+      $working_date = clone $depart;
+      $year_split = [array($start_year[0],$start_year[1],1)]; // Stores structures of (year of budget, actual year,number of days)
+      $current_year = 0; // Index of year_split array
+      while($return >= ($working_date = date_add($working_date,date_interval_create_from_date_string("1 day")))){
+        //write_to_console("Working: ".date_format($working_date,"Y-m-d"));
+        if($comparison_date > $working_date){
+          $year_split[$current_year][2] += 1;
+          //write_to_console($year_split[$current_year][2]);
+        } else {
+          $comparison_date = date_add($comparison_date,date_interval_create_from_date_string("1 year"));
+          $year_split[] = array($year_split[$current_year][0]+1, date_format($working_date,'Y'),1);
+          $current_year++;
+        }
+
+      }
+      //foreach($year_split as $y){
+        //write_to_console("Budget year ".$y[0]." (".$y[1].") ~ ".$y[2]);
+      //}
+    }
+  }
+
+  if(!$error && !empty($cost)){
+    include 'database/format_numbers.php';
+    if($code = format_number($cost)){
+      $message = "Number formatting error. ".$code;
+      $error_type = 1;
+      $error;
+    } else {
+    }
+  }
+
+  if(!$error){
+    $message = "All backend checks passed.";
+    $error_type = 0;
+  }
+
 }
 ?>
 
@@ -239,7 +263,7 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_dates']) && !$in
       <?php
       if(!$invalid && $has_access){
         echo '<div id="input-form">';
-          echo '<form method="POST" name="travel" onsubmit="return validateTravelForm(\'travel\','.$start_date.','.$length.')">';  
+          echo '<form method="POST" name="travel" onsubmit="return validateTravelForm(\'travel\',\''.$start_date.'\','.$length.')">';  
             echo '<div id="location_selection">';
               echo '<select id="destination-type" name="destination-type">';
                 echo '<option value="default">Select travel type</option>';
