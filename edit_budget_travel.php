@@ -142,6 +142,8 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_trip']) && $has_
 
   $cost = $_POST['transportation_cost'];
 
+  $destination_pricing = NULL;
+
   $error = False;
   if(($type ?? '') == 'domestic'){
     if(empty($d_state) || empty($d_county) || empty($d_destination)){
@@ -172,6 +174,23 @@ if($_SERVER['REQUEST_METHOD'] == "POST" && isset($_POST['submit_trip']) && $has_
         $message = "Return date can not be after the end of the budget.";
         $error_type = 1;
         $error = True;
+      }
+    }
+
+    if(!$error){
+      include 'database/db_connection';
+      if($type == 'domestic'){
+        $stmt = $conn->prepare("SELECT season_start, season_end, lodging, mie FROM domestic_travel_per_diem WHERE state=?, destination=?, county=?");
+        $stmt->bind_param("sss",$d_state,$d_destination,$d_county);
+        if(execute_query($stmt,$message)){
+          $result = $stmt->get_result();
+          $destination_pricing = $result->fetch_all(MYSQLI_ASSOC);
+          $stmt->close();
+          $conn->close();
+        } else {
+          $error = True;
+          $error_type = 1;
+        }
       }
     }
     if(!$error){
