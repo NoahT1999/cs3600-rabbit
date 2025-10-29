@@ -139,10 +139,7 @@ if(!isset($budget_id) || empty($budget_id)){
       breadcrumbs(array(array("home","./index.php"),array("budgets","./dashboard.php"),array("edit-budget","./javascript:location.reload();")));
     ?>
     <div class="content">
-      <div class="split-items">
-        <h1>Edit Budget</h1>
-        <button onclick="toggle_edit_mode(['equipment','other_costs']);">Toggle Edit Mode</button>
-      </div>
+      <h1>Edit Budget</h1>
       <div id="submission-message-holder"><p></p></div>
         <?php
         if($has_access && !$error){
@@ -166,7 +163,7 @@ if(!isset($budget_id) || empty($budget_id)){
               echo '</tr>';
             echo '</tbody>';
             echo '<tbody id="equipment">';
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Large Equipment</th></tr>';
+              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><div class="split-items">Large Equipment<button onclick="toggle_edit_mode([\'equipment\']);">Toggle Edit Mode</button></div></th></tr>';
                 if(isset($equipment) && !empty($equipment)){
                   foreach(array_keys($equipment) as $key){
                     echo '<tr>';
@@ -180,13 +177,14 @@ if(!isset($budget_id) || empty($budget_id)){
                         $cost = "$".$cost;
                       }
                       // View mode
-                      echo '<td class="data-view">'.$cost.'</td>';
+                      echo '<td class="data-view" id="equipment_'.$key.'_'.$i.'_view">'.$cost.'</td>';
                       // Edit mode
-                      echo '<td class="data-edit hidden"><input id="equipment_'.$key.'_'.$i.'" name="equipment_'.$key.'_'.$i.'" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\'equipment_'.$key.'_'.$i.'\',true);" onfocusout="highlightHeader(\'equipment_'.$key.'_'.$i.'\',false);"></input></td>';
+                      echo '<td class="data-edit hidden"><input id="equipment_'.$key.'_'.$i.'_edit" name="equipment_'.$key.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\'equipment_'.$key.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\'equipment_'.$key.'_'.$i.'_edit\',false);"></input></td>';
                     }
                     echo '</tr>';
                   }
                 }
+              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><a href="edit_budget_equipment.php?budget_id='.$budget_id.'">Edit Equipment</a></th></tr>';
             echo '</tbody>';
             echo '<tbody id="travel">';
               echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Travel</th></tr>';
@@ -196,13 +194,14 @@ if(!isset($budget_id) || empty($budget_id)){
                   echo '<td>Value '.($i+1).'</td>';
                 }
               echo '</tr>';
+              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><a href="edit_budget_travel.php?budget_id='.$budget_id.'">Edit Travel</a></th></tr>';
             echo '</tbody>';
             echo '<tbody id="other_costs">';
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Other Costs</th></tr>';
+              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><div class="split-items">Other Costs<button onclick="toggle_edit_mode([\'other_costs\']);">Toggle Edit Mode</button></div></th></tr>';
                 if(isset($other_costs) && !empty($other_costs)){
                   foreach(array_keys($other_costs) as $key){
                     echo '<tr>';
-                    echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>';
+                    echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>'; 
                     for($i = 1; $i < $length+1; $i++){
                       $cost = $other_costs[$key][$i];
                       if($cost == "0.00" or $cost == 0){
@@ -211,9 +210,9 @@ if(!isset($budget_id) || empty($budget_id)){
                         $cost = "$".$cost;
                       }
                       // View mode
-                      echo '<td class="data-view">'.$cost.'</td>';
+                      echo '<td class="data-view" id="other_costs_'.$key.'_'.$i.'_view">'.$cost.'</td>';
                       // Edit mode
-                      echo '<td class="data-edit hidden"><input id="other_costs_'.$key.'_'.$i.'" name="other_costs_'.$key.'_'.$i.'" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\'other_costs_'.$key.'_'.$i.'\',true);" onfocusout="highlightHeader(\'other_costs_'.$key.'_'.$i.'\',false);"></input></td>';
+                      echo '<td class="data-edit hidden"><input id="other_costs_'.$key.'_'.$i.'_edit" name="other_costs_'.$key.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\'other_costs_'.$key.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\'other_costs_'.$key.'_'.$i.'_edit\',false);"></input></td>';
                     }
                     echo '</tr>';
                   }
