@@ -44,14 +44,45 @@ if(isset($_SESSION['user'])){
     $first = strtolower($_POST["first_name"]);
     $last = strtolower($_POST["last_name"]);
 
+    $salary = NULL;
+    $level = NULL;
+    $tuition = NULL;
+
+    if($type === 'staff'){
+      if (isset($_POST['salary']) && $_POST['salary'] !== '') {
+        $salary = $_POST['salary'];
+      }
+    } elseif ($type === 'student') {
+
+      if (isset($_POST['level']) && $_POST['level'] !== '') {
+        $level = strtolower($_POST['level']);
+      }
+      if (isset($_POST['tuition']) && $_POST['tuition'] !== '') {
+        $tuition = $_POST['tuition'];
+      }
+    }
+
     include 'database/db_connection.php';
     $check_unused = $conn->prepare("SELECT id FROM ".$type." where id=?");
     $check_unused->bind_param("s",$id);
     if($check_unused->execute()){
       $check_unused->store_result();
-      if($check_unused->num_rows == 0){
-        $stmt = $conn->prepare("INSERT INTO ".$type." (id,first_name,last_name) VALUES (?, ?, ?)");
-        $stmt->bind_param("sss",$id,$first,$last);
+    if($check_unused->num_rows == 0){
+        // CHANGED: handle INSERT differently based on type
+        if ($type === 'staff') {
+          // ADDED: Insert salary for staff/faculty
+          $stmt = $conn->prepare("INSERT INTO staff (id, first_name, last_name, salary) VALUES (?, ?, ?, ?)");
+          // Using 's' for everything is fine; MySQL will cast numeric strings.
+          $stmt->bind_param("ssss",$id,$first,$last,$salary);
+        } elseif ($type === 'student') {
+          // ADDED: Insert level + tuition for students
+          $stmt = $conn->prepare("INSERT INTO student (id, first_name, last_name, level, tuition) VALUES (?, ?, ?, ?, ?)");
+          $stmt->bind_param("sssss",$id,$first,$last,$level,$tuition);
+        } else {
+          // Fallback to original behavior if some other type appears
+          $stmt = $conn->prepare("INSERT INTO ".$type." (id,first_name,last_name) VALUES (?, ?, ?)");
+          $stmt->bind_param("sss",$id,$first,$last);
+        }
         if($stmt->execute()){
           $message = "Successfully updated database.";
           $error_type = 0;
@@ -76,6 +107,11 @@ if(isset($_SESSION['user'])){
     $type = strtolower($_POST['modify_personnel_type']);
     $first = strtolower($_POST["first_name"]);
     $last = strtolower($_POST["last_name"]);
+    
+    // ADDED: extra fields for modify
+    $salary = isset($_POST['salary']) ? $_POST['salary'] : null;
+    $level = isset($_POST['level']) ? strtolower($_POST['level']) : null;
+    $tuition = isset($_POST['tuition']) ? $_POST['tuition'] : null;
 
     include 'database/db_connection.php';
     // Check if the id is already in the database. If not, do not attempt update.
@@ -93,6 +129,14 @@ if(isset($_SESSION['user'])){
             array($first,'first_name','s'),
             array($last,'last_name','s')
           );
+          if ($type === 'staff') {
+            // ADDED: salary for staff
+            $fields[] = array($salary,'salary','s');
+          } elseif ($type === 'student') {
+            // ADDED: level + tuition for students
+            $fields[] = array($level,'level','s');
+            $fields[] = array($tuition,'tuition','s');
+          }
           $updated = ""; // SQL query string of which columns to update
           $format = ""; // Format specifiers for bind_param
           $values = []; // Variables holding values for bind_param.
@@ -195,6 +239,26 @@ if(isset($_SESSION['user'])){
                 echo '<label for="last_name">Last Name: </label>';
                 echo '<input type="text" name="last_name" id="last_name" class="text-input-small" placeholder="Doe" maxlength="45"/>';
               echo '</div>';
+              // ADDED: extra fields for MODIFY, based on type
+              if ($type === 'staff') {
+                echo '<div>';
+                  echo '<label for="salary">Salary: </label>';
+                  echo '<input type="number" step="0.01" name="salary" id="salary" class="text-input-small" placeholder="50000.00"/>';
+                echo '</div>';
+              } elseif ($type === 'student') {
+                echo '<div>';
+                  echo '<label for="level">Level: </label>';
+                  echo '<select name="level" id="level" class="text-input-small">';
+                    echo '<option value="">-- Select --</option>';
+                    echo '<option value="undergraduate">Undergraduate</option>';
+                    echo '<option value="graduate">Graduate</option>';
+                  echo '</select>';
+                echo '</div>';
+                echo '<div>';
+                  echo '<label for="tuition">Tuition: </label>';
+                  echo '<input type="number" step="0.01" name="tuition" id="tuition" class="text-input-small" placeholder="12000.00"/>';
+                echo '</div>';
+              }
               echo '<div>';
               echo '<input type="hidden" name="modify_personnel_id" id="modify_personnel_id" value="'.$id.'"/>';
               echo '<input type="hidden" name="modify_personnel_type" id="modify_personnel_type" value="'.$type.'"/>';
@@ -216,6 +280,26 @@ if(isset($_SESSION['user'])){
                 echo '<label for="last_name">Last Name: </label>';
                 echo '<input type="text" name="last_name" id="last_name" class="text-input-small" required placeholder="Doe" maxlength="45"/>';
               echo '</div>';
+              // ADDED: extra fields for ADD, based on type
+              if ($type === 'staff') {
+                echo '<div>';
+                  echo '<label for="salary">Salary: </label>';
+                  echo '<input type="number" step="0.01" name="salary" id="salary" class="text-input-small" required placeholder="50000.00"/>';
+                echo '</div>';
+              } elseif ($type === 'student') {
+                echo '<div>';
+                  echo '<label for="level">Level: </label>';
+                  echo '<select name="level" id="level" class="text-input-small" required>';
+                    echo '<option value="">-- Select --</option>';
+                    echo '<option value="undergraduate">Undergraduate</option>';
+                    echo '<option value="graduate">Graduate</option>';
+                  echo '</select>';
+                echo '</div>';
+                echo '<div>';
+                  echo '<label for="tuition">Tuition: </label>';
+                  echo '<input type="number" step="0.01" name="tuition" id="tuition" class="text-input-small" required placeholder="12000.00"/>';
+                echo '</div>';
+              }
               echo '<div>';
               echo '<input type="hidden" name="add_personnel_id" id="add_personnel_id" value="'.$id.'"/>';
               echo '<input type="hidden" name="add_personnel_type" id="add_personnel_type" value="'.$type.'"/>';
