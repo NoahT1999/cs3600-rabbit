@@ -47,7 +47,7 @@ if(isset($_SESSION['user'])){
     $salary = NULL;
     $level = NULL;
     $tuition = NULL;
-
+    // adding this here to push to orignal.
     if($type === 'staff'){
       if (isset($_POST['salary']) && $_POST['salary'] !== '') {
         $salary = $_POST['salary'];
