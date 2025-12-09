@@ -14,7 +14,6 @@ if (!isset($_SESSION['user'])) {
   exit();
 }
 
-$tab = 'year-'.$_GET["year"];
 $budget_id = $_GET["budget_id"];
 $length = "";
 $error = False;
@@ -35,6 +34,11 @@ if(!isset($budget_id) || empty($budget_id)){
   } else {
     include './database/db_connection.php';
     $stmt = $conn->prepare("SELECT length from budget where id=?");
+    if(!$stmt){
+      write_to_console("Failed prepare stmt");
+    } else {
+      write_to_console("Success");
+    }
     $stmt->bind_param("s",$budget_id);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -170,7 +174,7 @@ if(!isset($budget_id) || empty($budget_id)){
                     // View mode
                     echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>';
                     for($i = 1; $i < $length+1; $i++){
-                      $cost = $equipment[$key][$i];
+                      $cost = isset($equipment[$key][$i]) ? $equipment[$key][$i] : 0;
                       if($cost == "0.00" or $cost == 0){
                         $cost = '-';
                       } else {
