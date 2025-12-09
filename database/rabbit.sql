@@ -2,10 +2,10 @@
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: localhost
--- Generation Time: Oct 28, 2025 at 07:15 AM
+-- Host: 127.0.0.1
+-- Generation Time: Dec 09, 2025 at 02:23 AM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- PHP Version: 8.0.30
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -30,17 +30,19 @@ SET time_zone = "+00:00";
 CREATE TABLE `budget` (
   `id` int(11) NOT NULL,
   `name` varchar(45) NOT NULL,
-  `effective_date` date NOT NULL
+  `effective_date` date NOT NULL,
+  `length` int(11) NOT NULL DEFAULT 5
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `budget`
 --
 
-INSERT INTO `budget` (`id`, `name`, `effective_date`) VALUES
-(14, 'Budget 1', '2026-01-01'),
-(15, 'Budget 2', '2026-01-01'),
-(16, 'testing 72', '2026-01-01');
+INSERT INTO `budget` (`id`, `name`, `effective_date`, `length`) VALUES
+(14, 'Budget 1', '2026-01-01', 5),
+(15, 'Budget 2', '2026-01-01', 5),
+(16, 'testing 72', '2026-01-01', 5),
+(23, 'test', '2025-11-21', 3);
 
 -- --------------------------------------------------------
 
@@ -60,6 +62,7 @@ CREATE TABLE `budget_access` (
 INSERT INTO `budget_access` (`user_id`, `budget_id`) VALUES
 (20, 14),
 (20, 16),
+(20, 23),
 (28, 15);
 
 -- --------------------------------------------------------
@@ -135,7 +138,12 @@ INSERT INTO `budget_other_costs` (`id`, `year`, `materials_and_supplies`, `small
 (16, 2, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
 (16, 3, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
 (16, 4, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
-(16, 5, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00);
+(16, 5, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(23, 1, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(23, 2, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(23, 3, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(23, 4, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
+(23, 5, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00);
 
 -- --------------------------------------------------------
 
@@ -216,15 +224,17 @@ INSERT INTO `login` (`id`, `username`, `password`) VALUES
 CREATE TABLE `staff` (
   `id` varchar(20) NOT NULL,
   `first_name` varchar(45) NOT NULL,
-  `last_name` varchar(45) NOT NULL
+  `last_name` varchar(45) NOT NULL,
+  `salary` decimal(10,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `staff`
 --
 
-INSERT INTO `staff` (`id`, `first_name`, `last_name`) VALUES
-('v1', 'juan', 'lopez');
+INSERT INTO `staff` (`id`, `first_name`, `last_name`, `salary`) VALUES
+('123456', 'jane', 'dope', 5000.00),
+('v1', 'juan', 'lopez', NULL);
 
 -- --------------------------------------------------------
 
@@ -235,19 +245,22 @@ INSERT INTO `staff` (`id`, `first_name`, `last_name`) VALUES
 CREATE TABLE `student` (
   `id` varchar(20) NOT NULL,
   `first_name` varchar(45) NOT NULL,
-  `last_name` varchar(45) NOT NULL
+  `last_name` varchar(45) NOT NULL,
+  `level` varchar(20) DEFAULT NULL,
+  `tuition` decimal(10,2) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `student`
 --
 
-INSERT INTO `student` (`id`, `first_name`, `last_name`) VALUES
-('v000000004', 'james', 'garfield'),
-('v00000001', 'steve', 'harvey'),
-('v00000002', 'john', 'kennedy'),
-('v00000003', 'george', 'patton'),
-('v00000004', 'squidward', 'tentacles');
+INSERT INTO `student` (`id`, `first_name`, `last_name`, `level`, `tuition`) VALUES
+('124455', 'john', 'doe', 'graduate', 125000.00),
+('v000000004', 'james', 'garfield', NULL, NULL),
+('v00000001', 'steve', 'harvey', NULL, NULL),
+('v00000002', 'john', 'kennedy', NULL, NULL),
+('v00000003', 'george', 'patton', NULL, NULL),
+('v00000004', 'squidward', 'tentacles', NULL, NULL);
 
 --
 -- Indexes for dumped tables
@@ -318,7 +331,7 @@ ALTER TABLE `student`
 -- AUTO_INCREMENT for table `budget`
 --
 ALTER TABLE `budget`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT for table `domestic_travel_per_diem`
