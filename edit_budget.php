@@ -63,6 +63,7 @@ $equipment = [];
 $travel = [];
 $personnel = [];      // linked to THIS budget
 $all_personnel = [];  // ALL staff + students in DB (for dropdown)
+$personnel_effort = [];   // effort % per year for linked personnel
 
 // If user submitted a link-personnel form, handle it first
 // If user submitted a link-personnel form, handle it first
@@ -260,7 +261,11 @@ if(!isset($budget_id) || empty($budget_id)){
     if (!$error) {
       // Staff on this budget
       $stmt = $conn->prepare("
-        SELECT bp.personnel_id AS id, 'staff' AS type, s.first_name, s.last_name
+        SELECT bp.personnel_id AS id,
+               'staff' AS type,
+               s.first_name,
+               s.last_name,
+               s.salary
         FROM budget_personnel bp
         JOIN staff s ON s.id = bp.personnel_id
         WHERE bp.budget_id = ? AND bp.personnel_type = 'staff'
@@ -278,7 +283,12 @@ if(!isset($budget_id) || empty($budget_id)){
 
       // Students on this budget
       $stmt = $conn->prepare("
-        SELECT bp.personnel_id AS id, 'student' AS type, st.first_name, st.last_name
+        SELECT bp.personnel_id AS id,
+               'student' AS type,
+               st.first_name,
+               st.last_name,
+               st.level,
+               st.tuition
         FROM budget_personnel bp
         JOIN student st ON st.id = bp.personnel_id
         WHERE bp.budget_id = ? AND bp.personnel_type = 'student'
@@ -290,6 +300,24 @@ if(!isset($budget_id) || empty($budget_id)){
         $data = $result->fetch_all(MYSQLI_ASSOC);
         foreach ($data as $row) {
           $personnel[] = $row;
+        }
+      }
+      $stmt->close();
+    }
+    // Fetch effort percentages for linked personnel
+    if (!$error) {
+      $stmt = $conn->prepare("
+        SELECT personnel_type, personnel_id, year, effort_percent
+        FROM budget_personnel_effort
+        WHERE budget_id = ?
+      ");
+      $stmt->bind_param("s", $budget_id);
+      if ($stmt->execute()) {
+        $result = $stmt->get_result();
+        $data = $result->fetch_all(MYSQLI_ASSOC);
+        foreach ($data as $row) {
+          $key = $row['personnel_type'].'|'.$row['personnel_id'];
+          $personnel_effort[$key][$row['year']] = $row['effort_percent'];
         }
       }
       $stmt->close();
@@ -377,19 +405,75 @@ if(!isset($budget_id) || empty($budget_id)){
               echo '</tr>';
             echo '</thead>';
             echo '<tbody id="personnel">';
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Personnel</th></tr>';
+              // Header with toggle button
+              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">';
+                echo '<div class="split-items">Personnel';
+                  echo '<button onclick="toggle_edit_mode([\'personnel\']);">Toggle Edit Mode</button>';
+                echo '</div>';
+              echo '</th></tr>';
 
               if (!empty($personnel)) {
                 foreach ($personnel as $p) {
                   $name = ucfirst($p['first_name']).' '.ucfirst($p['last_name']);
-                  $label = $name.' ('.ucfirst($p['type']).' - '.$p['id'].')';
+                  $key  = $p['type'].'|'.$p['id'];
+
+                  // Determine base annual cost (salary or tuition) for display and cost calc
+                  $base_cost = 0;
+                  $extra = '';
+                  if ($p['type'] === 'staff') {
+                    $base_cost = isset($p['salary']) ? (float)$p['salary'] : 0;
+                    if ($base_cost > 0) {
+                      $extra = ' | Salary: $'.number_format($base_cost, 2);
+                    }
+                  } else { // student
+                    $base_cost = isset($p['tuition']) ? (float)$p['tuition'] : 0;
+                    if ($base_cost > 0) {
+                      $extra = ' | Tuition: $'.number_format($base_cost, 2);
+                    }
+                  }
+
+                  $label = $name.' ('.ucfirst($p['type']).' - '.$p['id'].')'.$extra;
 
                   echo '<tr>';
-                    // Row header = person name + type + id
+                    // Row header = person name + type + id + salary/tuition
                     echo '<td class="row_header">'.$label.'</td>';
-                    // One cell per year (currently just placeholders; can later become salary/effort/cost per year)
-                    for ($i = 0; $i < $length; $i++) {
-                      echo '<td>-</td>';
+
+                    // One cell per year; we use years 1..$length like other tables
+                    for ($year = 1; $year <= $length; $year++) {
+                      $effort = isset($personnel_effort[$key][$year])
+                                ? (float)$personnel_effort[$key][$year]
+                                : 0.0;
+
+                      // Nicely formatted effort (e.g., "25%" or "-")
+                      $effort_display = $effort > 0
+                        ? rtrim(rtrim((string)$effort, '0'), '.').'%'
+                        : '-';
+
+                      // Compute annual cost for this budget from base_cost and effort
+                      $cost = ($base_cost > 0 && $effort > 0)
+                        ? $base_cost * ($effort / 100.0)
+                        : 0.0;
+
+                      $cost_display = $cost > 0
+                        ? ' ($'.number_format($cost, 2).')'
+                        : '';
+
+                      // VIEW MODE CELL
+                      echo '<td class="data-view" id="personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_view">';
+                        echo $effort_display.$cost_display;
+                      echo '</td>';
+
+                      // EDIT MODE CELL (hidden until toggle_edit_mode is called)
+                      echo '<td class="data-edit hidden">';
+                        echo '<input id="personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_edit" ';
+                        echo '       name="personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_effort" ';
+                        echo '       type="number" min="0" max="100" step="0.1" ';
+                        echo '       placeholder="'.($effort > 0 ? $effort : 0).'" ';
+                        echo '       onfocus="highlightHeader(\'personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_edit\',true);" ';
+                        echo '       onfocusout="highlightHeader(\'personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_edit\',false);" ';
+                        echo '>';
+                        echo ' %';
+                      echo '</td>';
                     }
                   echo '</tr>';
                 }
@@ -403,54 +487,16 @@ if(!isset($budget_id) || empty($budget_id)){
                 echo '</tr>';
               }
 
+              // Link to separate personnel editing page (link/unlink)
+              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">';
+                echo '<a href="edit_budget_personnel.php?budget_id='.$budget_id.'">Edit Personnel Links</a>';
+              echo '</th></tr>';
+
             echo '</tbody>';
             table_section($table_width,"Large Equipment","equipment",$length,$equipment,array(array('edit_budget_equipment.php?budget_id='.$budget_id,"Edit Equipment")));
             table_section($table_width,"Travel","travel",$length,$travel);
             table_section($table_width,"Other Costs","other_costs",$length,$other_costs);
           echo '</table>';
-          // Form to link staff/students to this budget
-                    // Form to link staff/students to this budget using a dropdown
-          if (isset($_SESSION['user'])) {
-            echo '<h2>Link Personnel to This Budget</h2>';
-
-            if (empty($all_personnel)) {
-              echo '<p>No personnel available to link. Add staff/students first.</p>';
-            } else {
-              echo '<form method="POST">';
-                echo '<input type="hidden" name="budget_id" value="'.htmlspecialchars($budget_id).'"/>';
-
-                echo '<div>';
-                  echo '<label for="personnel_key">Select Person: </label>';
-                  echo '<select name="personnel_key" id="personnel_key" class="text-input-small" required>';
-                    echo '<option value="">-- Select --</option>';
-
-                    // Build a map of already-linked ids so we can mark them
-                    $linked_map = [];
-                    foreach ($personnel as $p) {
-                      $linked_map[$p['type'].'|'.$p['id']] = true;
-                    }
-
-                    foreach ($all_personnel as $p) {
-                      $value = $p['type'].'|'.$p['id'];
-                      $name = ucfirst($p['first_name']).' '.ucfirst($p['last_name']);
-                      $label = $name.' ('.ucfirst($p['type']).' - '.$p['id'].')';
-
-                      if (isset($linked_map[$value])) {
-                        $label .= ' [already linked]';
-                      }
-
-                      echo '<option value="'.htmlspecialchars($value).'">'.htmlspecialchars($label).'</option>';
-                    }
-
-                  echo '</select>';
-                echo '</div>';
-
-                echo '<div>';
-                  echo '<button type="submit" name="link_personnel" class="styled-button submit-button">Link to Budget</button>';
-                echo '</div>';
-              echo '</form>';
-            }
-          }
         } else {
           echo '<a href="./dashboard.php">Return to dashboard.</a>';
         }
