@@ -277,6 +277,14 @@ if(isset($_SESSION['user'])){
           View All Personnel
         </button>
       </form>
+      <!-- ADDED: Export buttons -->
+      <?php if (isset($_SESSION['user'])): ?>
+      <form method="get" action="database/export_all.php" style="margin-top: 0.5rem;">
+        <button type="submit" class="styled-button submit-button">
+          Export Entire Database to Excel
+        </button>
+      </form>
+      <?php endif; ?>
       <?php
       // Show all staff and students if requested
       if (!empty($all_staff) || !empty($all_students)) {
