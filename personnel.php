@@ -10,6 +10,10 @@ function write_to_console($data) {
 
 $message = "";
 $error_type = 1;
+// Arrays to hold all personnel when "View All" is requested
+$all_staff = array();
+$all_students = array();
+if(isset($_SESSION['user'])){
 if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET["fetch_personnel_info"])){
   $person = "";
   include 'database/db_connection.php';
@@ -37,9 +41,65 @@ if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET["fetch_personnel_info"]))
   $conn->close();
 }
 
+if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET["view_all_personnel"])) {
+  include 'database/db_connection.php';
+
+  // Get all staff/faculty
+  $staff_query = "SELECT id, first_name, last_name, salary FROM staff ORDER BY id";
+  if ($result = $conn->query($staff_query)) {
+    while ($row = $result->fetch_assoc()) {
+      $all_staff[] = $row;
+    }
+    $result->free();
+  }
+
+  // Get all students
+  $student_query = "SELECT id, first_name, last_name, level, tuition FROM student ORDER BY id";
+  if ($result = $conn->query($student_query)) {
+    while ($row = $result->fetch_assoc()) {
+      $all_students[] = $row;
+    }
+    $result->free();
+  }
+
+  $conn->close();
+}
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["delete_person"])) {
+    $id   = strtolower($_POST['delete_personnel_id']);
+    $type = strtolower($_POST['delete_personnel_type']);
+
+    include 'database/db_connection.php';
+
+    try {
+      $stmt = $conn->prepare("DELETE FROM ".$type." WHERE id=?");
+      $stmt->bind_param("s", $id);
+
+      if ($stmt->execute()) {
+        if ($stmt->affected_rows > 0) {
+          $message = "Successfully deleted ".ucfirst($type)." with ID ".$id.".";
+          $error_type = 0;
+        } else {
+          $message = "No record found to delete for ID ".$id.".";
+          $error_type = 1;
+        }
+      } else {
+        $message = "Error deleting record: ".$stmt->error;
+        $error_type = 1;
+      }
+
+      $stmt->close();
+    } catch (Exception $e) {
+      $message = "Invalid personnel type for delete.";
+      $error_type = 1;
+    }
+
+    $conn->close();
+  }
+
+}
 if(isset($_SESSION['user'])){
   if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["add_person"])){
-    $id = strtolower($_POST['add_personnel_id']);
+    //$id = strtolower($_POST['add_personnel_id']);
     $type = strtolower($_POST['add_personnel_type']);
     $first = strtolower($_POST["first_name"]);
     $last = strtolower($_POST["last_name"]);
@@ -47,7 +107,7 @@ if(isset($_SESSION['user'])){
     $salary = NULL;
     $level = NULL;
     $tuition = NULL;
-    // adding this here to push to orignal.
+
     if($type === 'staff'){
       if (isset($_POST['salary']) && $_POST['salary'] !== '') {
         $salary = $_POST['salary'];
@@ -61,6 +121,8 @@ if(isset($_SESSION['user'])){
         $tuition = $_POST['tuition'];
       }
     }
+
+    $id = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
     include 'database/db_connection.php';
     $check_unused = $conn->prepare("SELECT id FROM ".$type." where id=?");
@@ -84,7 +146,8 @@ if(isset($_SESSION['user'])){
           $stmt->bind_param("sss",$id,$first,$last);
         }
         if($stmt->execute()){
-          $message = "Successfully updated database.";
+          // Make it obvious what ID was used
+          $message = "Successfully added ".ucfirst($type)." ".ucfirst($first)." ".ucfirst($last)." with ID ".$id.".";
           $error_type = 0;
         } else {
           $message = "Error: ".$stmt->error;
@@ -209,22 +272,89 @@ if(isset($_SESSION['user'])){
     <div class="content">
       <h1>Personnel</h1>
       <div id="submission-message-holder"><p></p></div>
-      <form method="get">
-        <div>
-          <label for="personnel_type">Type: </label>
-          <select name="personnel_type">
-            <option value="student">Student</option>
-            <option value="staff">Staff/Faculty</option>
-          </select>
-        </div>
-        <div>
-          <label for="personnel_id">ID: </label>
-          <input type="text" name="personnel_id" id="personnel_id" class="text-input-small" placeholder="v12345678" required>
-        </div>
-        <div>
-          <button type="submit" name="fetch_personnel_info" class="submit-button">Submit</button>
-        </div>
+      <form method="get" style="margin-top: 1rem;">
+        <button type="submit" name="view_all_personnel" value="1" class="styled-button submit-button">
+          View All Personnel
+        </button>
       </form>
+      <?php
+      // Show all staff and students if requested
+      if (!empty($all_staff) || !empty($all_students)) {
+
+        echo '<h2>Staff / Faculty</h2>';
+        if (!empty($all_staff)) {
+          echo '<table class="data-table">';
+          echo '<tr><th>ID</th><th>First Name</th><th>Last Name</th><th>Salary</th><th>Edit</th></tr>';
+          foreach ($all_staff as $row) {
+            echo '<tr>';
+            echo '<td>'.htmlspecialchars($row['id']).'</td>';
+            echo '<td>'.ucfirst(htmlspecialchars($row['first_name'])).'</td>';
+            echo '<td>'.ucfirst(htmlspecialchars($row['last_name'])).'</td>';
+            echo '<td>'.htmlspecialchars($row['salary']).'</td>';
+            echo '<td>';
+              if (isset($_SESSION['user'])) {
+                // Edit button (GET)
+                echo '<form method="get" style="display:inline-block; margin:0 2px;">';
+                  echo '<input type="hidden" name="personnel_type" value="staff"/>';
+                  echo '<input type="hidden" name="personnel_id" value="'.htmlspecialchars($row['id']).'"/>';
+                  echo '<button type="submit" name="fetch_personnel_info" class="styled-button submit-button">Edit</button>';
+                echo '</form>';
+
+                // Delete button (POST)
+                echo '<form method="post" style="display:inline-block; margin:0 2px;" onsubmit="return confirm(\'Delete this staff member?\');">';
+                  echo '<input type="hidden" name="delete_personnel_type" value="staff"/>';
+                  echo '<input type="hidden" name="delete_personnel_id" value="'.htmlspecialchars($row['id']).'"/>';
+                  echo '<button type="submit" name="delete_person" class="styled-button submit-button">Delete</button>';
+                echo '</form>';
+              } else {
+                echo '-';
+              }
+              echo '</td>';
+            echo '</tr>';
+          }
+          echo '</table>';
+        } else {
+          echo '<p>No staff/faculty in database.</p>';
+        }
+
+        echo '<h2>Students</h2>';
+        if (!empty($all_students)) {
+          echo '<table class="data-table">';
+          echo '<tr><th>ID</th><th>First Name</th><th>Last Name</th><th>Level</th><th>Tuition</th><th>Edit</th></tr>';
+          foreach ($all_students as $row) {
+            echo '<tr>';
+            echo '<td>'.htmlspecialchars($row['id']).'</td>';
+            echo '<td>'.ucfirst(htmlspecialchars($row['first_name'])).'</td>';
+            echo '<td>'.ucfirst(htmlspecialchars($row['last_name'])).'</td>';
+            echo '<td>'.htmlspecialchars($row['level']).'</td>';
+            echo '<td>'.htmlspecialchars($row['tuition']).'</td>';
+            echo '<td>';
+            if (isset($_SESSION['user'])) {
+              // Edit button (GET)
+              echo '<form method="get" style="display:inline-block; margin:0 2px;">';
+                echo '<input type="hidden" name="personnel_type" value="student"/>';
+                echo '<input type="hidden" name="personnel_id" value="'.htmlspecialchars($row['id']).'"/>';
+                echo '<button type="submit" name="fetch_personnel_info" class="styled-button submit-button">Edit</button>';
+              echo '</form>';
+
+              // Delete button (POST)
+              echo '<form method="post" style="display:inline-block; margin:0 2px;" onsubmit="return confirm(\'Delete this student?\');">';
+                echo '<input type="hidden" name="delete_personnel_type" value="student"/>';
+                echo '<input type="hidden" name="delete_personnel_id" value="'.htmlspecialchars($row['id']).'"/>';
+                echo '<button type="submit" name="delete_person" class="styled-button submit-button">Delete</button>';
+              echo '</form>';
+            } else {
+              echo '-';
+            }
+            echo '</td>';
+            echo '</tr>';
+          }
+          echo '</table>';
+        } else {
+          echo '<p>No students in database.</p>';
+        }
+      }
+      ?>
       <?php
       if(isset($person)){
         if(!empty($person)){
@@ -270,48 +400,51 @@ if(isset($_SESSION['user'])){
           }
         } else {
           echo '<p>No results found.</p>';
-          if(isset($_SESSION['user'])){
-            echo '<form method="POST">';
-              echo '<div>';
-                echo '<label for="first_name">First Name: </label>';
-                echo '<input type="text" name="first_name" id="first_name" class="text-input-small" required placeholder="John" maxlength="45"/>';
-              echo '</div>';
-              echo '<div>';
-                echo '<label for="last_name">Last Name: </label>';
-                echo '<input type="text" name="last_name" id="last_name" class="text-input-small" required placeholder="Doe" maxlength="45"/>';
-              echo '</div>';
-              // ADDED: extra fields for ADD, based on type
-              if ($type === 'staff') {
-                echo '<div>';
-                  echo '<label for="salary">Salary: </label>';
-                  echo '<input type="number" step="0.01" name="salary" id="salary" class="text-input-small" required placeholder="50000.00"/>';
-                echo '</div>';
-              } elseif ($type === 'student') {
-                echo '<div>';
-                  echo '<label for="level">Level: </label>';
-                  echo '<select name="level" id="level" class="text-input-small" required>';
-                    echo '<option value="">-- Select --</option>';
-                    echo '<option value="undergraduate">Undergraduate</option>';
-                    echo '<option value="graduate">Graduate</option>';
-                  echo '</select>';
-                echo '</div>';
-                echo '<div>';
-                  echo '<label for="tuition">Tuition: </label>';
-                  echo '<input type="number" step="0.01" name="tuition" id="tuition" class="text-input-small" required placeholder="12000.00"/>';
-                echo '</div>';
-              }
-              echo '<div>';
-              echo '<input type="hidden" name="add_personnel_id" id="add_personnel_id" value="'.$id.'"/>';
-              echo '<input type="hidden" name="add_personnel_type" id="add_personnel_type" value="'.$type.'"/>';
-              echo '</div>';
-              echo '<div>';
-                echo '<button type="submit" name="add_person" class="styled-button submit-button">Add</button>';
-              echo '</div>';
-            echo '</form>';
-          }
         }
       }
       ?>
+      <?php if (isset($_SESSION['user'])): ?>
+      <h2>Add New Person</h2>
+      <form method="POST">
+        <div>
+          <label for="add_personnel_type">Type: </label>
+          <select name="add_personnel_type" id="add_personnel_type" class="text-input-small" required>
+            <option value="">-- Select --</option>
+            <option value="staff">Staff/Faculty</option>
+            <option value="student">Student</option>
+          </select>
+        </div>
+        <div>
+          <label for="add_first_name">First Name: </label>
+          <input type="text" name="first_name" id="add_first_name" class="text-input-small" required placeholder="John" maxlength="45"/>
+        </div>
+        <div>
+          <label for="add_last_name">Last Name: </label>
+          <input type="text" name="last_name" id="add_last_name" class="text-input-small" required placeholder="Doe" maxlength="45"/>
+        </div>
+        <div>
+          <label for="add_salary">Salary (Staff only): </label>
+          <input type="number" step="0.01" name="salary" id="add_salary" class="text-input-small" placeholder="50000.00"/>
+        </div>
+        <div>
+          <label for="add_level">Level (Student only): </label>
+          <select name="level" id="add_level" class="text-input-small">
+            <option value="">-- Select --</option>
+            <option value="undergraduate">Undergraduate</option>
+            <option value="graduate">Graduate</option>
+          </select>
+        </div>
+        <div>
+          <label for="add_tuition">Tuition (Student only): </label>
+          <input type="number" step="0.01" name="tuition" id="add_tuition" class="text-input-small" placeholder="12000.00"/>
+        </div>
+        <!-- No need for ID field: it is auto-generated as 6 digits in PHP -->
+        <div>
+          <button type="submit" name="add_person" class="styled-button submit-button">Add Person</button>
+        </div>
+      </form>
+<?php endif; ?>
+
       <?php
         if(isset($message) && !empty($message)){
           echo '<script>submissionMessage("'.$message.'",'.$error_type.');</script>';
@@ -323,6 +456,6 @@ if(isset($_SESSION['user'])){
   </body>
   <?php
     include 'database/foot.php';
-    footer(26,"October",2025,'Josh Gillum');
+    footer(26,"October",2025,'Josh Gillum Noah Turner');
   ?>
 </html>
