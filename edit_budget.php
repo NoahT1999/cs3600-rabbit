@@ -32,9 +32,10 @@ function subsection_data($data_array,$budget_length,$name) {
           $cost = "$".$cost;
         }
         // View mode
-        echo '<td class="data-view" id="'.$name.'_'.$key.'_'.$i.'_view">'.$cost.'</td>';
+        $key_fixed = str_replace("_","-",$key);
+        echo '<td class="data-view" id="'.$name.'_'.$key_fixed.'_'.$i.'_view">'.$cost.'</td>';
         // Edit mode
-        echo '<td class="data-edit hidden"><input id="'.$name.'_'.$key.'_'.$i.'_edit" name="'.$name.'_'.$key.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\''.$name.'_'.$key.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\''.$name.'_'.$key.'_'.$i.'_edit\',false);"></input></td>';
+        echo '<td class="data-edit hidden"><input id="'.$name.'_'.$key_fixed.'_'.$i.'_edit" name="'.$name.'_'.$key_fixed.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\''.$name.'_'.$key_fixed.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\''.$name.'_'.$key_fixed.'_'.$i.'_edit\',false);"></input></td>';
       }
       echo '</tr>';
     }
@@ -85,7 +86,7 @@ function update_values($fields,$table,$budget_id,$budget_id_name="budget_id"){
           }
           $stmt->close();
         } else { // Displays a message stating what went wrong
-          $message = "Invalid number: \'".$field[0]."\' for field: \'".$field[1]."\'. ".$code;
+          $message = "Invalid number: \'".$value."\' for field: \'".$key."\'. ".$code;
           $error_type = 1;
           $invalid_number = 1;
           write_to_console($message);
@@ -435,6 +436,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_travel'])){
   update_values($fields,"budget_travel",$budget_id);
 }
 
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_other-costs'])){
+  $fields = array(
+    array(array(),'materials_and_supplies','materials-and-supplies','s'),
+    array(array(),'small_equipment','small-equipment','s'),
+    array(array(),'publication','publication','s'),
+    array(array(),'computer_services','computer-services','s'),
+    array(array(),'software','software','s'),
+    array(array(),'facility_fees','facility-fees','s'),
+    array(array(),'conference_registration','conference-registration','s'),
+    array(array(),'other','other','s'),
+  );
+  organize_data($fields,$length);
+  update_values($fields,"budget_other_costs",$budget_id,"id");
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -571,7 +587,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_travel'])){
             echo '</tbody>';
             table_section($table_width,"Large Equipment","equipment",$length,$equipment,array(array('edit_budget_equipment.php?budget_id='.$budget_id,"Edit Equipment")));
             table_section($table_width,"Travel","travel",$length,$travel);
-            table_section($table_width,"Other Costs","other_costs",$length,$other_costs);
+            table_section($table_width,"Other Costs","other-costs",$length,$other_costs);
           echo '</table>';
         } else {
           echo '<a href="./dashboard.php">Return to dashboard.</a>';
