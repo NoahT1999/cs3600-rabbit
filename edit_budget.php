@@ -1,7 +1,21 @@
 <?php
 
+session_start();
+// Check if user is logged in, if not redirect to login page
+if (!isset($_SESSION['user'])) {
+  header("Location: database/login.php");
+  exit();
+}
+
+// Budget ID can come from GET (normal load) or POST (form submits)
+$budget_id = $_GET["budget_id"] ?? $_POST["budget_id"] ?? null;
+$length = "";
+$message = "";
+$error = False;
+$error_type = 0;
+
 function subsection_header($t_w,$title,$subsection_id) {
-  echo '<tr><th colspan="'.$t_w.'" class="table_subsection_header"><div class="split-items">'.$title.'<div><button onclick="toggle_edit_mode([\''.$subsection_id.'\']);">Toggle Edit Mode</button><button>Submit</button></div></div></th></tr>';
+  echo '<tr><th colspan="'.$t_w.'" class="table_subsection_header"><div class="split-items">'.$title.'<div><button type="button" onclick="toggle_edit_mode([\''.$subsection_id.'\']);">Toggle Edit Mode</button><button type="submit" name="submit_'.$subsection_id.'" id="submit_'.$subsection_id.'" class="submit-button data-edit hidden">Modify</button></div></div></th></tr>';
 }
 
 function subsection_data($data_array,$budget_length,$name) {
@@ -29,8 +43,10 @@ function subsection_data($data_array,$budget_length,$name) {
 
 function table_section($table_width,$title,$id_name,$budget_length,$data_array,$links=null) {
   echo '<tbody id="'.$id_name.'">';
-    subsection_header($table_width,$title,$id_name);
-    subsection_data($data_array,$budget_length,$id_name);
+    echo '<form method="POST">';
+      subsection_header($table_width,$title,$id_name);
+      subsection_data($data_array,$budget_length,$id_name);
+    echo '</form>';
     if(isset($links) && !empty($links)){
       foreach($links as $link){
         echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><a href="'.$link[0].'">'.$link[1].'</a></th></tr>';
@@ -39,24 +55,55 @@ function table_section($table_width,$title,$id_name,$budget_length,$data_array,$
   echo '</tbody>';
 }
 
-function write_to_console($data) {
- $console = $data;
- if (is_array($console))
- $console = implode(',', $console);
-
- echo "<script>console.log('Console: " . $console . "' );</script>";
-}
-session_start();
-// Check if user is logged in, if not redirect to login page
-if (!isset($_SESSION['user'])) {
-  header("Location: database/login.php");
+function update_values($fields,$table,$budget_id,$budget_id_name="budget_id"){
+  include './database/format_numbers.php';
+  // $fields stores an array of fields in the database that can be updated.
+  // Index 0 - Explicitly define variable holding data. Set to NULL to fetch data from $_POST
+  //       1 - Name of column in the database
+  //       2 - Name of value in form
+  //       3 - Data type for updating database. 's' for string, 'i' for integer, etc.
+  // $table is the database table to be updated
+  $updated = ""; // SQL query string of which columns to update
+  $format = ""; // Format specifiers for bind_param
+  $values = []; // Variables holding values for bind_param.
+  $invalid_number = 0;
+  include './database/db_connection.php';
+  foreach($fields as $field){
+    // Checks if value was updated in POST
+    foreach($field[0] as $key => $value){
+      if($value == 0 || (isset($value) && !empty($value))){
+        write_to_console($key."=".$value);
+        $code = "";
+        if(!($code=format_number($value))){ // Checks if the number is correctly formatted.
+          write_to_console("Updating ".$field[1]);
+          $stmt = $conn->prepare('UPDATE '.$table.' SET '.$field[1].'=? WHERE '.$budget_id_name.'=? AND year=?');
+          write_to_console('UPDATE '.$table.' SET '.$field[1].'=? WHERE '.$budget_id_name.'=? AND year=?');
+          write_to_console(array($value,$budget_id,$key));
+          $stmt->bind_param($field[3]."ss",$value,$budget_id,$key);
+          if(!$stmt->execute()){
+            write_to_console($stmt->error);
+          }
+          $stmt->close();
+        } else { // Displays a message stating what went wrong
+          $message = "Invalid number: \'".$field[0]."\' for field: \'".$field[1]."\'. ".$code;
+          $error_type = 1;
+          $invalid_number = 1;
+          write_to_console($message);
+        }
+      }
+    }
+  }
+  header("Location: edit_budget.php?budget_id=".$budget_id);
   exit();
 }
 
-// Budget ID can come from GET (normal load) or POST (form submits)
-$budget_id = $_GET["budget_id"] ?? $_POST["budget_id"] ?? null;
-$length = "";
-$error = False;
+function write_to_console($data) {
+  $console = $data;
+  if (is_array($console))
+  $console = implode(',', $console);
+
+  echo "<script>console.log('Console: " . $console . "' );</script>";
+}
 
 $other_costs = [];
 $equipment = [];
@@ -138,6 +185,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["link_personnel"])) {
   header("Location: edit_budget.php?budget_id=".$budget_id);
   exit();
 }
+
 
 
 if(!isset($budget_id) || empty($budget_id)){
@@ -359,6 +407,34 @@ if(!isset($budget_id) || empty($budget_id)){
     $conn->close();
   }
 }
+
+function organize_data(&$fields,$budget_length){
+  foreach($_POST as $key => $value){
+    if($value == '0' || (isset($_POST[$key]) && !empty($_POST[$key]))){
+      write_to_console($key." ".$value);
+      $str = explode("_",$key);
+      if(intval($str[2]) > 0 && intval($str[2]) <= $budget_length){
+        for($i = 0; $i < sizeof($fields); $i++){
+          if($str[1] == $fields[$i][2]){
+            $fields[$i][0][intval($str[2])] = $value;
+            write_to_console($fields[$i][0]);
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_travel'])){
+  $fields = array(
+    array(array(),'domestic','domestic','s'),
+    array(array(),'international','international','s')
+  );
+  organize_data($fields,$length);
+  update_values($fields,"budget_travel",$budget_id);
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -511,6 +587,6 @@ if(!isset($budget_id) || empty($budget_id)){
   </body>
   <?php
     include 'database/foot.php';
-    footer(28,"October",2025,'Josh Gillum Noah Turner');
+    footer(11,"December",2025,'Josh Gillum Noah Turner');
   ?>
 </html>
