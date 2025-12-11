@@ -1,5 +1,44 @@
 <?php
 
+function subsection_header($t_w,$title,$subsection_id) {
+  echo '<tr><th colspan="'.$t_w.'" class="table_subsection_header"><div class="split-items">'.$title.'<div><button onclick="toggle_edit_mode([\''.$subsection_id.'\']);">Toggle Edit Mode</button><button>Submit</button></div></div></th></tr>';
+}
+
+function subsection_data($data_array,$budget_length,$name) {
+  if(isset($data_array) && !empty($data_array)){
+    foreach(array_keys($data_array) as $key){
+      echo '<tr>';
+      // View mode
+      echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>';
+      for($i = 1; $i < $budget_length+1; $i++){
+        $cost = isset($data_array[$key][$i]) ? $data_array[$key][$i] : 0;
+        if($cost == "0.00" or $cost == 0){
+          $cost = '-';
+        } else {
+          $cost = "$".$cost;
+        }
+        // View mode
+        echo '<td class="data-view" id="'.$name.'_'.$key.'_'.$i.'_view">'.$cost.'</td>';
+        // Edit mode
+        echo '<td class="data-edit hidden"><input id="'.$name.'_'.$key.'_'.$i.'_edit" name="'.$name.'_'.$key.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\''.$name.'_'.$key.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\''.$name.'_'.$key.'_'.$i.'_edit\',false);"></input></td>';
+      }
+      echo '</tr>';
+    }
+  }
+}
+
+function table_section($table_width,$title,$id_name,$budget_length,$data_array,$links=null) {
+  echo '<tbody id="'.$id_name.'">';
+    subsection_header($table_width,$title,$id_name);
+    subsection_data($data_array,$budget_length,$id_name);
+    if(isset($links) && !empty($links)){
+      foreach($links as $link){
+        echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><a href="'.$link[0].'">'.$link[1].'</a></th></tr>';
+      }
+    }
+  echo '</tbody>';
+}
+
 function write_to_console($data) {
  $console = $data;
  if (is_array($console))
@@ -21,6 +60,7 @@ $error = False;
 
 $other_costs = [];
 $equipment = [];
+$travel = [];
 $personnel = [];      // linked to THIS budget
 $all_personnel = [];  // ALL staff + students in DB (for dropdown)
 
@@ -179,6 +219,37 @@ if(!isset($budget_id) || empty($budget_id)){
           $error = True;
         }
       }
+     
+      // Fetches travel data
+      if(!$error){
+        $stmt = $conn->prepare("SELECT b.year, b.domestic, b.international FROM budget_travel as b WHERE b.budget_id=?");
+        $stmt->bind_param("s",$budget_id);
+        if($stmt->execute()){
+          $result = $stmt->get_result();
+          $data = $result->fetch_all(MYSQLI_ASSOC);
+          $stmt->close();
+          if(isset($data) && !empty($data)){
+            $keys = array_keys($data[0]);
+            unset($keys[array_search('id',$keys)]);
+            foreach($data as $row){
+              foreach($keys as $key){
+                if($key != 'year'){
+                  if(!isset($travel[$key])){
+                    $travel[$key] = [];
+                  }
+                  $travel[$key][$row['year']] = $row[$key];
+                }
+              }
+            }
+          } else {
+            $message = "Failed to fetch travel.";
+            $error = True;
+          }
+        } else {
+          $message = "Failed to fetch travel.";
+          $error = True;
+        }
+      }
 
     } else {
       $message = "Error fetching budget.";
@@ -333,63 +404,9 @@ if(!isset($budget_id) || empty($budget_id)){
               }
 
             echo '</tbody>';
-
-            echo '<tbody id="equipment">';
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><div class="split-items">Large Equipment<button onclick="toggle_edit_mode([\'equipment\']);">Toggle Edit Mode</button></div></th></tr>';
-                if(isset($equipment) && !empty($equipment)){
-                  foreach(array_keys($equipment) as $key){
-                    echo '<tr>';
-                    // View mode
-                    echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>';
-                    for($i = 1; $i < $length+1; $i++){
-                      $cost = isset($equipment[$key][$i]) ? $equipment[$key][$i] : 0;
-                      if($cost == "0.00" or $cost == 0){
-                        $cost = '-';
-                      } else {
-                        $cost = "$".$cost;
-                      }
-                      // View mode
-                      echo '<td class="data-view" id="equipment_'.$key.'_'.$i.'_view">'.$cost.'</td>';
-                      // Edit mode
-                      echo '<td class="data-edit hidden"><input id="equipment_'.$key.'_'.$i.'_edit" name="equipment_'.$key.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\'equipment_'.$key.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\'equipment_'.$key.'_'.$i.'_edit\',false);"></input></td>';
-                    }
-                    echo '</tr>';
-                  }
-                }
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><a href="edit_budget_equipment.php?budget_id='.$budget_id.'">Edit Equipment</a></th></tr>';
-            echo '</tbody>';
-            echo '<tbody id="travel">';
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Travel</th></tr>';
-              echo '<tr>';
-                echo '<td></td>';
-                for($i = 0; $i < $length; $i++){
-                  echo '<td>Value '.($i+1).'</td>';
-                }
-              echo '</tr>';
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><a href="edit_budget_travel.php?budget_id='.$budget_id.'">Edit Travel</a></th></tr>';
-            echo '</tbody>';
-            echo '<tbody id="other_costs">';
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><div class="split-items">Other Costs<button onclick="toggle_edit_mode([\'other_costs\']);">Toggle Edit Mode</button></div></th></tr>';
-                if(isset($other_costs) && !empty($other_costs)){
-                  foreach(array_keys($other_costs) as $key){
-                    echo '<tr>';
-                    echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>'; 
-                    for($i = 1; $i < $length+1; $i++){
-                      $cost = $other_costs[$key][$i];
-                      if($cost == "0.00" or $cost == 0){
-                        $cost = '-';
-                      } else {
-                        $cost = "$".$cost;
-                      }
-                      // View mode
-                      echo '<td class="data-view" id="other_costs_'.$key.'_'.$i.'_view">'.$cost.'</td>';
-                      // Edit mode
-                      echo '<td class="data-edit hidden"><input id="other_costs_'.$key.'_'.$i.'_edit" name="other_costs_'.$key.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\'other_costs_'.$key.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\'other_costs_'.$key.'_'.$i.'_edit\',false);"></input></td>';
-                    }
-                    echo '</tr>';
-                  }
-                }
-            echo '</tbody>';
+            table_section($table_width,"Large Equipment","equipment",$length,$equipment,array(array('edit_budget_equipment.php?budget_id='.$budget_id,"Edit Equipment")));
+            table_section($table_width,"Travel","travel",$length,$travel);
+            table_section($table_width,"Other Costs","other_costs",$length,$other_costs);
           echo '</table>';
           // Form to link staff/students to this budget
                     // Form to link staff/students to this budget using a dropdown
