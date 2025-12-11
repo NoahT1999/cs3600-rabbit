@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 09, 2025 at 02:23 AM
+-- Generation Time: Dec 11, 2025 at 06:00 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -148,6 +148,25 @@ INSERT INTO `budget_other_costs` (`id`, `year`, `materials_and_supplies`, `small
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `budget_personnel`
+--
+
+CREATE TABLE `budget_personnel` (
+  `budget_id` int(11) NOT NULL,
+  `personnel_type` enum('staff','student') NOT NULL,
+  `personnel_id` varchar(20) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `budget_personnel`
+--
+
+INSERT INTO `budget_personnel` (`budget_id`, `personnel_type`, `personnel_id`) VALUES
+(14, 'staff', '344568');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `domestic_travel_per_diem`
 --
 
@@ -233,8 +252,10 @@ CREATE TABLE `staff` (
 --
 
 INSERT INTO `staff` (`id`, `first_name`, `last_name`, `salary`) VALUES
+('1', 'joe', 'rog', 50000.00),
 ('123456', 'jane', 'dope', 5000.00),
-('v1', 'juan', 'lopez', NULL);
+('344568', 'g', 'g', 50000.00),
+('961441', 'rummy', 'rum', 50000.00);
 
 -- --------------------------------------------------------
 
@@ -259,8 +280,7 @@ INSERT INTO `student` (`id`, `first_name`, `last_name`, `level`, `tuition`) VALU
 ('v000000004', 'james', 'garfield', NULL, NULL),
 ('v00000001', 'steve', 'harvey', NULL, NULL),
 ('v00000002', 'john', 'kennedy', NULL, NULL),
-('v00000003', 'george', 'patton', NULL, NULL),
-('v00000004', 'squidward', 'tentacles', NULL, NULL);
+('v00000003', 'george', 'patton', NULL, NULL);
 
 --
 -- Indexes for dumped tables
@@ -291,6 +311,12 @@ ALTER TABLE `budget_equipment`
 --
 ALTER TABLE `budget_other_costs`
   ADD PRIMARY KEY (`id`,`year`);
+
+--
+-- Indexes for table `budget_personnel`
+--
+ALTER TABLE `budget_personnel`
+  ADD PRIMARY KEY (`budget_id`,`personnel_type`,`personnel_id`);
 
 --
 -- Indexes for table `domestic_travel_per_diem`
@@ -374,6 +400,12 @@ ALTER TABLE `budget_equipment`
 --
 ALTER TABLE `budget_other_costs`
   ADD CONSTRAINT `budget_other_costs_ibfk_1` FOREIGN KEY (`id`) REFERENCES `budget` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `budget_personnel`
+--
+ALTER TABLE `budget_personnel`
+  ADD CONSTRAINT `budget_personnel_ibfk_1` FOREIGN KEY (`budget_id`) REFERENCES `budget` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
