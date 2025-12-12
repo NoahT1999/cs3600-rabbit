@@ -33,6 +33,8 @@ function subsection_data($data_array,$budget_length,$name) {
         }
         // View mode
         $key_fixed = str_replace("_","-",$key);
+        $key_fixed = str_replace(" ","-",$key_fixed);
+        $key_fixed = strtolower($key_fixed);
         echo '<td class="data-view" id="'.$name.'_'.$key_fixed.'_'.$i.'_view">'.$cost.'</td>';
         // Edit mode
         echo '<td class="data-edit hidden"><input id="'.$name.'_'.$key_fixed.'_'.$i.'_edit" name="'.$name.'_'.$key_fixed.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\''.$name.'_'.$key_fixed.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\''.$name.'_'.$key_fixed.'_'.$i.'_edit\',false);"></input></td>';
@@ -56,7 +58,7 @@ function table_section($table_width,$title,$id_name,$budget_length,$data_array,$
   echo '</tbody>';
 }
 
-function update_values($fields,$table,$budget_id,$budget_id_name="budget_id"){
+function update_values($fields,$table,$budget_id,$budget_id_name="budget_id",$larger_fields=false){
   include './database/format_numbers.php';
   // $fields stores an array of fields in the database that can be updated.
   // Index 0 - Explicitly define variable holding data. Set to NULL to fetch data from $_POST
@@ -75,12 +77,20 @@ function update_values($fields,$table,$budget_id,$budget_id_name="budget_id"){
       if($value == 0 || (isset($value) && !empty($value))){
         write_to_console($key."=".$value);
         $code = "";
+        $stmt = null;
         if(!($code=format_number($value))){ // Checks if the number is correctly formatted.
           write_to_console("Updating ".$field[1]);
-          $stmt = $conn->prepare('UPDATE '.$table.' SET '.$field[1].'=? WHERE '.$budget_id_name.'=? AND year=?');
-          write_to_console('UPDATE '.$table.' SET '.$field[1].'=? WHERE '.$budget_id_name.'=? AND year=?');
-          write_to_console(array($value,$budget_id,$key));
-          $stmt->bind_param($field[3]."ss",$value,$budget_id,$key);
+          if(!$larger_fields){
+            $stmt = $conn->prepare('UPDATE '.$table.' SET '.$field[1].'=? WHERE '.$budget_id_name.'=? AND year=?');
+            write_to_console('UPDATE '.$table.' SET '.$field[1].'=? WHERE '.$budget_id_name.'=? AND year=?');
+            write_to_console(array($value,$budget_id,$key));
+            $stmt->bind_param($field[3]."ss",$value,$budget_id,$key);
+          } else {
+            $stmt = $conn->prepare('UPDATE '.$table.' SET '.$field[1].'=? WHERE '.$budget_id_name.'=? AND year=? AND '.$field[4].'=?');
+            write_to_console('UPDATE '.$table.' SET '.$field[1].'=? WHERE '.$budget_id_name.'=? AND year=? AND '.$field[4].'=?');
+            $stmt->bind_param($field[3]."sss",$value,$budget_id,$key,$field[5]);
+            write_to_console($value.",".$budget_id.",".$key.",".$field[5]);
+          }
           if(!$stmt->execute()){
             write_to_console($stmt->error);
           }
@@ -449,6 +459,28 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_other-costs']))
   );
   organize_data($fields,$length);
   update_values($fields,"budget_other_costs",$budget_id,"id");
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_equipment'])){
+  include './database/db_connection.php';
+  $stmt = $conn->prepare("Select DISTINCT equipment_id,name from budget_equipment JOIN equipment on budget_equipment.equipment_id = equipment.id where budget_id = ?");
+  $stmt->bind_param("s",$budget_id);
+  $translations = [];
+  if($stmt->execute()){
+    $result = $stmt->get_result();
+    $data = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    if(isset($data) && !empty($data)){
+      foreach($data as $row){
+        $cleaned_name = str_replace(" ","-",strtolower($row['name']));
+        write_to_console($cleaned_name);
+        $translations[] = array(array(),"cost",$cleaned_name,'s',"equipment_id",$row["equipment_id"]); // Last two values are additional specifiers
+      }
+    }
+  }
+  $conn->close();
+  organize_data($translations,$length);
+  update_values($translations,"budget_equipment",$budget_id,"budget_id",true);
 }
 
 ?>
