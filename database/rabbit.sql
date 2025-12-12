@@ -2,10 +2,10 @@
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: 127.0.0.1
--- Generation Time: Dec 12, 2025 at 01:19 AM
+-- Host: localhost
+-- Generation Time: Dec 11, 2025 at 09:48 PM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.0.30
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -211,6 +211,30 @@ CREATE TABLE `budget_personnel_growth` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `budget_travel`
+--
+
+CREATE TABLE `budget_travel` (
+  `budget_id` int(11) NOT NULL,
+  `year` int(11) NOT NULL,
+  `domestic` decimal(10,2) DEFAULT 0.00,
+  `international` decimal(10,2) DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `budget_travel`
+--
+
+INSERT INTO `budget_travel` (`budget_id`, `year`, `domestic`, `international`) VALUES
+(14, 1, 0.00, 0.00),
+(14, 2, 0.00, 0.00),
+(14, 3, 0.00, 0.00),
+(14, 4, 0.00, 0.00),
+(14, 5, 0.00, 0.00);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `domestic_travel_per_diem`
 --
 
@@ -369,10 +393,10 @@ ALTER TABLE `budget_personnel_effort`
   ADD PRIMARY KEY (`budget_id`,`personnel_type`,`personnel_id`,`year`);
 
 --
--- Indexes for table `budget_personnel_growth`
+-- Indexes for table `budget_travel`
 --
-ALTER TABLE `budget_personnel_growth`
-  ADD PRIMARY KEY (`budget_id`,`personnel_type`,`personnel_id`);
+ALTER TABLE `budget_travel`
+  ADD PRIMARY KEY (`budget_id`,`year`);
 
 --
 -- Indexes for table `domestic_travel_per_diem`

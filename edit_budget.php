@@ -1,12 +1,5 @@
 <?php
 
-function write_to_console($data) {
- $console = $data;
- if (is_array($console))
- $console = implode(',', $console);
-
- echo "<script>console.log('Console: " . $console . "' );</script>";
-}
 session_start();
 // Check if user is logged in, if not redirect to login page
 if (!isset($_SESSION['user'])) {
@@ -17,10 +10,115 @@ if (!isset($_SESSION['user'])) {
 // Budget ID can come from GET (normal load) or POST (form submits)
 $budget_id = $_GET["budget_id"] ?? $_POST["budget_id"] ?? null;
 $length = "";
+$message = "";
 $error = False;
+$error_type = 0;
+
+function subsection_header($t_w,$title,$subsection_id) {
+  echo '<tr><th colspan="'.$t_w.'" class="table_subsection_header"><div class="split-items">'.$title.'<div><button type="button" onclick="toggle_edit_mode([\''.$subsection_id.'\']);">Toggle Edit Mode</button><button type="submit" name="submit_'.$subsection_id.'" id="submit_'.$subsection_id.'" class="submit-button data-edit hidden">Modify</button></div></div></th></tr>';
+}
+
+function subsection_data($data_array,$budget_length,$name) {
+  if(isset($data_array) && !empty($data_array)){
+    foreach(array_keys($data_array) as $key){
+      echo '<tr>';
+      // View mode
+      echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>';
+      for($i = 1; $i < $budget_length+1; $i++){
+        $cost = isset($data_array[$key][$i]) ? $data_array[$key][$i] : 0;
+        if($cost == "0.00" or $cost == 0){
+          $cost = '-';
+        } else {
+          $cost = "$".$cost;
+        }
+        // View mode
+        $key_fixed = str_replace("_","-",$key);
+        $key_fixed = str_replace(" ","-",$key_fixed);
+        $key_fixed = strtolower($key_fixed);
+        echo '<td class="data-view" id="'.$name.'_'.$key_fixed.'_'.$i.'_view">'.$cost.'</td>';
+        // Edit mode
+        echo '<td class="data-edit hidden"><input id="'.$name.'_'.$key_fixed.'_'.$i.'_edit" name="'.$name.'_'.$key_fixed.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\''.$name.'_'.$key_fixed.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\''.$name.'_'.$key_fixed.'_'.$i.'_edit\',false);"></input></td>';
+      }
+      echo '</tr>';
+    }
+  }
+}
+
+function table_section($table_width,$title,$id_name,$budget_length,$data_array,$links=null) {
+  echo '<tbody id="'.$id_name.'">';
+    echo '<form method="POST">';
+      subsection_header($table_width,$title,$id_name);
+      subsection_data($data_array,$budget_length,$id_name);
+    echo '</form>';
+    if(isset($links) && !empty($links)){
+      foreach($links as $link){
+        echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><a href="'.$link[0].'">'.$link[1].'</a></th></tr>';
+      }
+    }
+  echo '</tbody>';
+}
+
+function update_values($fields,$table,$budget_id,$budget_id_name="budget_id",$larger_fields=false){
+  include './database/format_numbers.php';
+  // $fields stores an array of fields in the database that can be updated.
+  // Index 0 - Explicitly define variable holding data. Set to NULL to fetch data from $_POST
+  //       1 - Name of column in the database
+  //       2 - Name of value in form
+  //       3 - Data type for updating database. 's' for string, 'i' for integer, etc.
+  // $table is the database table to be updated
+  $updated = ""; // SQL query string of which columns to update
+  $format = ""; // Format specifiers for bind_param
+  $values = []; // Variables holding values for bind_param.
+  $invalid_number = 0;
+  include './database/db_connection.php';
+  foreach($fields as $field){
+    // Checks if value was updated in POST
+    foreach($field[0] as $key => $value){
+      if($value == 0 || (isset($value) && !empty($value))){
+        write_to_console($key."=".$value);
+        $code = "";
+        $stmt = null;
+        if(!($code=format_number($value))){ // Checks if the number is correctly formatted.
+          write_to_console("Updating ".$field[1]);
+          if(!$larger_fields){
+            $stmt = $conn->prepare('UPDATE '.$table.' SET '.$field[1].'=? WHERE '.$budget_id_name.'=? AND year=?');
+            write_to_console('UPDATE '.$table.' SET '.$field[1].'=? WHERE '.$budget_id_name.'=? AND year=?');
+            write_to_console(array($value,$budget_id,$key));
+            $stmt->bind_param($field[3]."ss",$value,$budget_id,$key);
+          } else {
+            $stmt = $conn->prepare('UPDATE '.$table.' SET '.$field[1].'=? WHERE '.$budget_id_name.'=? AND year=? AND '.$field[4].'=?');
+            write_to_console('UPDATE '.$table.' SET '.$field[1].'=? WHERE '.$budget_id_name.'=? AND year=? AND '.$field[4].'=?');
+            $stmt->bind_param($field[3]."sss",$value,$budget_id,$key,$field[5]);
+            write_to_console($value.",".$budget_id.",".$key.",".$field[5]);
+          }
+          if(!$stmt->execute()){
+            write_to_console($stmt->error);
+          }
+          $stmt->close();
+        } else { // Displays a message stating what went wrong
+          $message = "Invalid number: \'".$value."\' for field: \'".$key."\'. ".$code;
+          $error_type = 1;
+          $invalid_number = 1;
+          write_to_console($message);
+        }
+      }
+    }
+  }
+  header("Location: edit_budget.php?budget_id=".$budget_id);
+  exit();
+}
+
+function write_to_console($data) {
+  $console = $data;
+  if (is_array($console))
+  $console = implode(',', $console);
+
+  echo "<script>console.log('Console: " . $console . "' );</script>";
+}
 
 $other_costs = [];
 $equipment = [];
+$travel = [];
 $personnel = [];      // linked to THIS budget
 $all_personnel = [];  // ALL staff + students in DB (for dropdown)
 $personnel_effort = [];   // effort % per year for linked personnel
@@ -149,6 +247,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["link_personnel"])) {
 }
 
 
+
 if(!isset($budget_id) || empty($budget_id)){
   $has_access = False;
   $message = "Invalid referral link";
@@ -226,6 +325,37 @@ if(!isset($budget_id) || empty($budget_id)){
           }
         } else {
           $message = "Failed to fetch large equipment.";
+          $error = True;
+        }
+      }
+     
+      // Fetches travel data
+      if(!$error){
+        $stmt = $conn->prepare("SELECT b.year, b.domestic, b.international FROM budget_travel as b WHERE b.budget_id=?");
+        $stmt->bind_param("s",$budget_id);
+        if($stmt->execute()){
+          $result = $stmt->get_result();
+          $data = $result->fetch_all(MYSQLI_ASSOC);
+          $stmt->close();
+          if(isset($data) && !empty($data)){
+            $keys = array_keys($data[0]);
+            unset($keys[array_search('id',$keys)]);
+            foreach($data as $row){
+              foreach($keys as $key){
+                if($key != 'year'){
+                  if(!isset($travel[$key])){
+                    $travel[$key] = [];
+                  }
+                  $travel[$key][$row['year']] = $row[$key];
+                }
+              }
+            }
+          } else {
+            $message = "Failed to fetch travel.";
+            $error = True;
+          }
+        } else {
+          $message = "Failed to fetch travel.";
           $error = True;
         }
       }
@@ -356,6 +486,71 @@ if(!isset($budget_id) || empty($budget_id)){
     $conn->close();
   }
 }
+
+function organize_data(&$fields,$budget_length){
+  foreach($_POST as $key => $value){
+    if($value == '0' || (isset($_POST[$key]) && !empty($_POST[$key]))){
+      write_to_console($key." ".$value);
+      $str = explode("_",$key);
+      if(intval($str[2]) > 0 && intval($str[2]) <= $budget_length){
+        for($i = 0; $i < sizeof($fields); $i++){
+          if($str[1] == $fields[$i][2]){
+            $fields[$i][0][intval($str[2])] = $value;
+            write_to_console($fields[$i][0]);
+            break;
+          }
+        }
+      }
+    }
+  }
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_travel'])){
+  $fields = array(
+    array(array(),'domestic','domestic','s'),
+    array(array(),'international','international','s')
+  );
+  organize_data($fields,$length);
+  update_values($fields,"budget_travel",$budget_id);
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_other-costs'])){
+  $fields = array(
+    array(array(),'materials_and_supplies','materials-and-supplies','s'),
+    array(array(),'small_equipment','small-equipment','s'),
+    array(array(),'publication','publication','s'),
+    array(array(),'computer_services','computer-services','s'),
+    array(array(),'software','software','s'),
+    array(array(),'facility_fees','facility-fees','s'),
+    array(array(),'conference_registration','conference-registration','s'),
+    array(array(),'other','other','s'),
+  );
+  organize_data($fields,$length);
+  update_values($fields,"budget_other_costs",$budget_id,"id");
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_equipment'])){
+  include './database/db_connection.php';
+  $stmt = $conn->prepare("Select DISTINCT equipment_id,name from budget_equipment JOIN equipment on budget_equipment.equipment_id = equipment.id where budget_id = ?");
+  $stmt->bind_param("s",$budget_id);
+  $translations = [];
+  if($stmt->execute()){
+    $result = $stmt->get_result();
+    $data = $result->fetch_all(MYSQLI_ASSOC);
+    $stmt->close();
+    if(isset($data) && !empty($data)){
+      foreach($data as $row){
+        $cleaned_name = str_replace(" ","-",strtolower($row['name']));
+        write_to_console($cleaned_name);
+        $translations[] = array(array(),"cost",$cleaned_name,'s',"equipment_id",$row["equipment_id"]); // Last two values are additional specifiers
+      }
+    }
+  }
+  $conn->close();
+  organize_data($translations,$length);
+  update_values($translations,"budget_equipment",$budget_id,"budget_id",true);
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -517,73 +712,11 @@ if(!isset($budget_id) || empty($budget_id)){
                   echo '<a href="edit_budget_personnel.php?budget_id='.$budget_id.'">Edit Personnel Links</a>';
                 echo '</th></tr>';
 
-              echo '</tbody>';
-
-
-              echo '<tbody id="equipment">';
-                echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><div class="split-items">Large Equipment<button type="button" onclick="toggle_edit_mode([\'equipment\']);">Toggle Edit Mode</button></div></th></tr>';
-                  if(isset($equipment) && !empty($equipment)){
-                    foreach(array_keys($equipment) as $key){
-                      echo '<tr>';
-                      // View mode
-                      echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>';
-                      for($i = 1; $i < $length+1; $i++){
-                        $cost = isset($equipment[$key][$i]) ? $equipment[$key][$i] : 0;
-                        if($cost == "0.00" or $cost == 0){
-                          $cost = '-';
-                        } else {
-                          $cost = "$".$cost;
-                        }
-                        // View mode
-                        echo '<td class="data-view" id="equipment_'.$key.'_'.$i.'_view">'.$cost.'</td>';
-                        // Edit mode
-                        echo '<td class="data-edit hidden"><input id="equipment_'.$key.'_'.$i.'_edit" name="equipment_'.$key.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\'equipment_'.$key.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\'equipment_'.$key.'_'.$i.'_edit\',false);"></input></td>';
-                      }
-                      echo '</tr>';
-                    }
-                  }
-                echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><a href="edit_budget_equipment.php?budget_id='.$budget_id.'">Edit Equipment</a></th></tr>';
-              echo '</tbody>';
-              echo '<tbody id="travel">';
-                echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Travel</th></tr>';
-                echo '<tr>';
-                  echo '<td></td>';
-                  for($i = 0; $i < $length; $i++){
-                    echo '<td>Value '.($i+1).'</td>';
-                  }
-                echo '</tr>';
-                echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><a href="edit_budget_travel.php?budget_id='.$budget_id.'">Edit Travel</a></th></tr>';
-              echo '</tbody>';
-              echo '<tbody id="other_costs">';
-                echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><div class="split-items">Other Costs<button type="button" onclick="toggle_edit_mode([\'other_costs\']);">Toggle Edit Mode</button></div></th></tr>';
-                  if(isset($other_costs) && !empty($other_costs)){
-                    foreach(array_keys($other_costs) as $key){
-                      echo '<tr>';
-                      echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>'; 
-                      for($i = 1; $i < $length+1; $i++){
-                        $cost = $other_costs[$key][$i];
-                        if($cost == "0.00" or $cost == 0){
-                          $cost = '-';
-                        } else {
-                          $cost = "$".$cost;
-                        }
-                        // View mode
-                        echo '<td class="data-view" id="other_costs_'.$key.'_'.$i.'_view">'.$cost.'</td>';
-                        // Edit mode
-                        echo '<td class="data-edit hidden"><input id="other_costs_'.$key.'_'.$i.'_edit" name="other_costs_'.$key.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\'other_costs_'.$key.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\'other_costs_'.$key.'_'.$i.'_edit\',false);"></input></td>';
-                      }
-                      echo '</tr>';
-                    }
-                  }
-              echo '</tbody>';
-            echo '</table>';
-
-            // Save button for personnel effort
-            echo '<div style="margin-top:1rem;">';
-              echo '<button type="submit" name="save_personnel_effort" class="styled-button submit-button">Save Personnel Effort</button>';
-            echo '</div>';
-
-          echo '</form>';
+            echo '</tbody>';
+            table_section($table_width,"Large Equipment","equipment",$length,$equipment,array(array('edit_budget_equipment.php?budget_id='.$budget_id,"Edit Equipment")));
+            table_section($table_width,"Travel","travel",$length,$travel);
+            table_section($table_width,"Other Costs","other-costs",$length,$other_costs);
+          echo '</table>';
         } else {
           echo '<a href="./dashboard.php">Return to dashboard.</a>';
         }
@@ -599,6 +732,6 @@ if(!isset($budget_id) || empty($budget_id)){
   </body>
   <?php
     include 'database/foot.php';
-    footer(28,"October",2025,'Josh Gillum Noah Turner');
+    footer(11,"December",2025,'Josh Gillum Noah Turner');
   ?>
 </html>
