@@ -32,10 +32,10 @@ if ($budget_id === null) {
   }
 }
 
-// Handle link / unlink actions
+// Handle link / unlink / growth actions
 if ($_SERVER["REQUEST_METHOD"] === "POST" && $has_access) {
 
-  // LINK: button passes value like "staff|123456" or "student|124455"
+  // LINK
   if (isset($_POST["link_personnel_key"])) {
     $key = $_POST["link_personnel_key"];
     $parts = explode('|', $key, 2);
@@ -77,7 +77,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $has_access) {
       $message = "Unlinked ".ucfirst($type)." ".$personnel_id." from this budget.";
       $error_type = 0;
 
-      // Optional: also clear any effort rows for this person on this budget
+      // also clear any effort rows for this person on this budget
       $eff = $conn->prepare("
         DELETE FROM budget_personnel_effort
         WHERE budget_id = ? AND personnel_type = ? AND personnel_id = ?
@@ -85,11 +85,51 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $has_access) {
       $eff->bind_param("iss", $budget_id, $type, $personnel_id);
       $eff->execute();
       $eff->close();
+
+      // also clear any growth rows
+      $g = $conn->prepare("
+        DELETE FROM budget_personnel_growth
+        WHERE budget_id = ? AND personnel_type = ? AND personnel_id = ?
+      ");
+      $g->bind_param("iss", $budget_id, $type, $personnel_id);
+      $g->execute();
+      $g->close();
     } else {
       $message = "Error unlinking personnel: ".$stmt->error;
       $error_type = 1;
     }
     $stmt->close();
+
+  // SAVE GROWTH RATE
+  } elseif (isset($_POST["save_growth_rate"])) {
+    $type = strtolower($_POST["growth_personnel_type"] ?? '');
+    $personnel_id = strtolower($_POST["growth_personnel_id"] ?? '');
+    $rate = isset($_POST["growth_rate"]) ? floatval($_POST["growth_rate"]) : 0.0;
+
+    if ($type !== 'staff' && $type !== 'student') {
+      $message = "Invalid personnel type for growth rate.";
+      $error_type = 1;
+    } else {
+      // clamp to sane limits
+      if ($rate < 0) $rate = 0;
+      if ($rate > 100) $rate = 100;
+
+      $stmt = $conn->prepare("
+        INSERT INTO budget_personnel_growth (budget_id, personnel_type, personnel_id, growth_rate_percent)
+        VALUES (?, ?, ?, ?)
+        ON DUPLICATE KEY UPDATE growth_rate_percent = VALUES(growth_rate_percent)
+      ");
+      $stmt->bind_param("issd", $budget_id, $type, $personnel_id, $rate);
+
+      if ($stmt->execute()) {
+        $message = "Saved growth rate of ".$rate."% per year for ".ucfirst($type)." ".$personnel_id.".";
+        $error_type = 0;
+      } else {
+        $message = "Error saving growth rate: ".$stmt->error;
+        $error_type = 1;
+      }
+      $stmt->close();
+    }
   }
 
   // Avoid form resubmit on refresh
@@ -97,9 +137,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $has_access) {
   exit();
 }
 
+
 // If user has access, load all personnel + linked map
 $all_personnel = [];
 $linked_map = [];
+$growth_map = [];
 
 if ($has_access && $budget_id !== null) {
   // Linked
@@ -113,6 +155,19 @@ if ($has_access && $budget_id !== null) {
   $res = $stmt->get_result();
   while ($row = $res->fetch_assoc()) {
     $linked_map[$row['personnel_type'].'|'.$row['personnel_id']] = true;
+  }
+  $stmt->close();
+  // Growth rates
+  $stmt = $conn->prepare("
+    SELECT personnel_type, personnel_id, growth_rate_percent
+    FROM budget_personnel_growth
+    WHERE budget_id = ?
+  ");
+  $stmt->bind_param("i", $budget_id);
+  $stmt->execute();
+  $res = $stmt->get_result();
+  while ($row = $res->fetch_assoc()) {
+    $growth_map[$row['personnel_type'].'|'.$row['personnel_id']] = (float)$row['growth_rate_percent'];
   }
   $stmt->close();
 
@@ -212,6 +267,8 @@ if ($has_access && $budget_id !== null) {
                 $type = $p['type'];
                 $id   = $p['id'];
                 $key  = $type.'|'.$id;
+                $growth = isset($growth_map[$key]) ? $growth_map[$key] : 0.0;
+                $growth_display = $growth > 0 ? rtrim(rtrim((string)$growth,'0'),'.').'% / yr' : '0% / yr';
 
                 // Base cost = salary or tuition
                 if ($type === 'staff') {
@@ -227,27 +284,40 @@ if ($has_access && $budget_id !== null) {
                   echo '<td>'.ucfirst($type).'</td>';
                   echo '<td>'.$id.'</td>';
                   echo '<td>'.$base_label.'</td>';
-                  echo '<td>';
+                echo '<td>';
+                // Show current growth rate
+                if (isset($linked_map[$key])) {
+                  echo '<div>Growth: '.$growth_display.'</div>';
+                }
+                // UNLINK or LINK form
+                if (isset($linked_map[$key])) {
+                  // UNLINK form
+                  echo '<form method="post" style="display:inline-block" onsubmit="return confirm(\'Unlink this person from this budget?\');">';
+                    echo '<input type="hidden" name="budget_id" value="'.htmlspecialchars($budget_id).'">';
+                    echo '<input type="hidden" name="unlink_personnel_type" value="'.htmlspecialchars($type).'">';
+                    echo '<input type="hidden" name="unlink_personnel_id" value="'.htmlspecialchars($id).'">';
+                    echo '<button type="submit" class="styled-button submit-button">Unlink</button>';
+                  echo '</form>';
 
-                  if (isset($linked_map[$key])) {
-                    // UNLINK form
-                    echo '<form method="post" style="display:inline-block" onsubmit="return confirm(\'Unlink this person from this budget?\');">';
-                      echo '<input type="hidden" name="budget_id" value="'.htmlspecialchars($budget_id).'">';
-                      echo '<input type="hidden" name="unlink_personnel_type" value="'.htmlspecialchars($type).'">';
-                      echo '<input type="hidden" name="unlink_personnel_id" value="'.htmlspecialchars($id).'">';
-                      echo '<button type="submit" class="styled-button submit-button">Unlink</button>';
-                    echo '</form>';
-                  } else {
-                    // LINK form
-                    echo '<form method="post" style="display:inline-block">';
-                      echo '<input type="hidden" name="budget_id" value="'.htmlspecialchars($budget_id).'">';
-                      echo '<button type="submit" name="link_personnel_key" value="'.htmlspecialchars($key).'" class="styled-button submit-button">';
-                        echo 'Link to Budget';
-                      echo '</button>';
-                    echo '</form>';
-                  }
+                  // GROWTH RATE form
+                  echo '<form method="post" style="display:inline-block; margin-left:0.5rem;">';
+                    echo '<input type="hidden" name="budget_id" value="'.htmlspecialchars($budget_id).'">';
+                    echo '<input type="hidden" name="growth_personnel_type" value="'.htmlspecialchars($type).'">';
+                    echo '<input type="hidden" name="growth_personnel_id" value="'.htmlspecialchars($id).'">';
+                    echo '<input type="number" name="growth_rate" min="0" max="100" step="0.1" value="'.htmlspecialchars($growth).'" style="width:5rem;">';
+                    echo '<button type="submit" name="save_growth_rate" class="styled-button submit-button">Save %</button>';
+                  echo '</form>';
 
-                  echo '</td>';
+                } else {
+                  // LINK form
+                  echo '<form method="post" style="display:inline-block">';
+                    echo '<input type="hidden" name="budget_id" value="'.htmlspecialchars($budget_id).'">';
+                    echo '<button type="submit" name="link_personnel_key" value="'.htmlspecialchars($key).'" class="styled-button submit-button">';
+                      echo 'Link to Budget';
+                    echo '</button>';
+                  echo '</form>';
+                }
+                echo '</td>';
                 echo '</tr>';
               }
 
