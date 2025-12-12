@@ -24,8 +24,57 @@ $equipment = [];
 $personnel = [];      // linked to THIS budget
 $all_personnel = [];  // ALL staff + students in DB (for dropdown)
 $personnel_effort = [];   // effort % per year for linked personnel
+$personnel_growth = []; // annual growth rate per person
 
-// If user submitted a link-personnel form, handle it first
+// Handle saving personnel effort (percentages per year)
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["save_personnel_effort"])) {
+  include './database/check_access.php';
+
+  // budget_id must come from the form
+  $budget_id = $_POST["budget_id"] ?? null;
+
+  if ($budget_id === null || !check_access($_SESSION['user'], $budget_id)) {
+    $message = "Access denied for this budget.";
+    $error_type = 1;
+  } else {
+    include './database/db_connection.php';
+
+    foreach ($_POST as $key => $value) {
+      // Match fields like: personnel_staff_123456_1_effort or personnel_student_v00000001_2_effort
+      if (preg_match('/^personnel_(staff|student)_([^_]+)_([0-9]+)_effort$/', $key, $matches)) {
+        $type = $matches[1];          // 'staff' or 'student'
+        $personnel_id = $matches[2];  // e.g. '123456' or 'v00000001'
+        $year = (int)$matches[3];     // 1, 2, 3, ...
+
+        // Convert effort; empty → 0
+        $effort = trim($value) === '' ? 0.0 : (float)$value;
+
+        // Clamp to 0–100 for safety
+        if ($effort < 0) $effort = 0;
+        if ($effort > 100) $effort = 100;
+
+        $stmt = $conn->prepare("
+          INSERT INTO budget_personnel_effort (budget_id, personnel_type, personnel_id, year, effort_percent)
+          VALUES (?, ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE effort_percent = VALUES(effort_percent)
+        ");
+        $stmt->bind_param("issid", $budget_id, $type, $personnel_id, $year, $effort);
+        $stmt->execute();
+        $stmt->close();
+      }
+    }
+
+    $conn->close();
+
+    $message = "Personnel effort saved.";
+    $error_type = 0;
+  }
+
+  // Redirect to avoid resubmission on refresh
+  header("Location: edit_budget.php?budget_id=".$budget_id);
+  exit();
+}
+
 // If user submitted a link-personnel form, handle it first
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["link_personnel"])) {
   include './database/check_access.php';
@@ -250,7 +299,26 @@ if(!isset($budget_id) || empty($budget_id)){
         }
       }
       $stmt->close();
-    }
+      }
+      // Fetch growth rates for linked personnel (annual %)
+      if (!$error) {
+        $stmt = $conn->prepare("
+          SELECT personnel_type, personnel_id, growth_rate_percent
+          FROM budget_personnel_growth
+          WHERE budget_id = ?
+        ");
+        $stmt->bind_param("s", $budget_id);
+        if ($stmt->execute()) {
+          $result = $stmt->get_result();
+          $data = $result->fetch_all(MYSQLI_ASSOC);
+          foreach ($data as $row) {
+            $key = $row['personnel_type'].'|'.$row['personnel_id'];
+            $personnel_growth[$key] = (float)$row['growth_rate_percent'];
+          }
+        }
+        $stmt->close();
+      }
+
 
     // Fetch ALL personnel for dropdown
     if (!$error) {
@@ -324,166 +392,202 @@ if(!isset($budget_id) || empty($budget_id)){
         <?php
         if($has_access && !$error){
           $table_width = $length + 1;
-          echo '<table class="budget_table">';
-            echo '<thead>';
-              echo '<tr>';
-                echo '<th></th>';
-                for($i = 0; $i < $length; $i++){
-                  echo '<th>Year '.($i+1).'</th>';
-                }
-              echo '</tr>';
-            echo '</thead>';
-            echo '<tbody id="personnel">';
-              // Header with toggle button
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">';
-                echo '<div class="split-items">Personnel';
-                  echo '<button onclick="toggle_edit_mode([\'personnel\']);">Toggle Edit Mode</button>';
-                echo '</div>';
-              echo '</th></tr>';
 
-              if (!empty($personnel)) {
-                foreach ($personnel as $p) {
-                  $name = ucfirst($p['first_name']).' '.ucfirst($p['last_name']);
-                  $key  = $p['type'].'|'.$p['id'];
+          // Open form so personnel dropdowns get submitted
+          echo '<form method="post" action="edit_budget.php">';
+            echo '<input type="hidden" name="budget_id" value="'.htmlspecialchars($budget_id).'">';
 
-                  // Determine base annual cost (salary or tuition) for display and cost calc
-                  $base_cost = 0;
-                  $extra = '';
-                  if ($p['type'] === 'staff') {
-                    $base_cost = isset($p['salary']) ? (float)$p['salary'] : 0;
-                    if ($base_cost > 0) {
-                      $extra = ' | Salary: $'.number_format($base_cost, 2);
-                    }
-                  } else { // student
-                    $base_cost = isset($p['tuition']) ? (float)$p['tuition'] : 0;
-                    if ($base_cost > 0) {
-                      $extra = ' | Tuition: $'.number_format($base_cost, 2);
-                    }
+            echo '<table class="budget_table">';
+              echo '<thead>';
+                echo '<tr>';
+                  echo '<th></th>';
+                  for($i = 0; $i < $length; $i++){
+                    echo '<th>Year '.($i+1).'</th>';
                   }
+                echo '</tr>';
+              echo '</thead>';
+              echo '<tbody id="personnel">';
+                // Header with toggle button
+                echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">';
+                  echo '<div class="split-items">Personnel';
+                    // type="button" so it doesn't submit the form
+                    echo '<button type="button" onclick="toggle_edit_mode([\'personnel\']);">Toggle Edit Mode</button>';
+                  echo '</div>';
+                echo '</th></tr>';
 
-                  $label = $name.' ('.ucfirst($p['type']).' - '.$p['id'].')'.$extra;
+                if (!empty($personnel)) {
+                  foreach ($personnel as $p) {
+                    $name = ucfirst($p['first_name']).' '.ucfirst($p['last_name']);
+                    $key  = $p['type'].'|'.$p['id'];
 
+                    // Determine base annual cost (salary or tuition) for display and cost calc
+                    $base_cost = 0;
+                    $extra = '';
+                    if ($p['type'] === 'staff') {
+                      $base_cost = isset($p['salary']) ? (float)$p['salary'] : 0;
+                      if ($base_cost > 0) {
+                        $extra = ' | Salary: $'.number_format($base_cost, 2);
+                      }
+                    } else { // student
+                      $base_cost = isset($p['tuition']) ? (float)$p['tuition'] : 0;
+                      if ($base_cost > 0) {
+                        $extra = ' | Tuition: $'.number_format($base_cost, 2);
+                      }
+                    }
+
+                    $label = $name.' ('.ucfirst($p['type']).' - '.$p['id'].')'.$extra;
+
+                    echo '<tr>';
+                      // Row header = person name + type + id + salary/tuition
+                      echo '<td class="row_header">'.$label.'</td>';
+
+                      // One cell per year; we use years 1..$length like other tables
+                      for ($year = 1; $year <= $length; $year++) {
+                        $effort = isset($personnel_effort[$key][$year])
+                                  ? (float)$personnel_effort[$key][$year]
+                                  : 0.0;
+
+                        // Nicely formatted effort (e.g., "25%" or "-")
+                        $effort_display = $effort > 0
+                          ? rtrim(rtrim((string)$effort, '0'), '.').'%'
+                          : '-';
+
+                        // Apply growth rate to base salary/tuition
+                        $growth_rate = isset($personnel_growth[$key])
+                          ? (float)$personnel_growth[$key]
+                          : 0.0;
+
+                        $grown_base = $base_cost;
+                        if ($base_cost > 0 && $growth_rate != 0.0) {
+                          $factor = 1 + ($growth_rate / 100.0);
+                          // Year 1 => base, Year 2 => base * factor, Year 3 => base * factor^2, ...
+                          $grown_base = $base_cost * pow($factor, $year - 1);
+                        }
+
+                        // Compute annual cost for this budget from grown_base and effort
+                        $cost = ($grown_base > 0 && $effort > 0)
+                          ? $grown_base * ($effort / 100.0)
+                          : 0.0;
+
+                        $cost_display = $cost > 0
+                          ? ' ($'.number_format($cost, 2).')'
+                          : '';
+
+                        // VIEW MODE CELL
+                        echo '<td class="data-view" id="personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_view">';
+                          echo $effort_display.$cost_display;
+                        echo '</td>';
+
+                        // EDIT MODE CELL (hidden until toggle_edit_mode is called)
+                        echo '<td class="data-edit hidden">';
+
+                          // cap by type: students 50% max FTE, staff up to 100% (change if needed)
+                          $maxEffort = ($p['type'] === 'student') ? 50 : 100;
+
+                          $element_id = 'personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_edit';
+                          $element_name = 'personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_effort';
+
+                          echo '<select id="'.$element_id.'" name="'.$element_name.'" ';
+                          echo '        onfocus="highlightHeader(\''.$element_id.'\',true);" ';
+                          echo '        onfocusout="highlightHeader(\''.$element_id.'\',false);">';
+
+                          for ($percent = 0; $percent <= $maxEffort; $percent++) {
+                            $selected = ((int)round($effort) === $percent) ? ' selected' : '';
+                            echo '<option value="'.$percent.'"'.$selected.'>'.$percent.'%</option>';
+                          }
+
+                          echo '</select>';
+
+                        echo '</td>';
+                      }
+                    echo '</tr>';
+                  }
+                } else {
+                  // No personnel yet linked to this budget
                   echo '<tr>';
-                    // Row header = person name + type + id + salary/tuition
-                    echo '<td class="row_header">'.$label.'</td>';
-
-                    // One cell per year; we use years 1..$length like other tables
-                    for ($year = 1; $year <= $length; $year++) {
-                      $effort = isset($personnel_effort[$key][$year])
-                                ? (float)$personnel_effort[$key][$year]
-                                : 0.0;
-
-                      // Nicely formatted effort (e.g., "25%" or "-")
-                      $effort_display = $effort > 0
-                        ? rtrim(rtrim((string)$effort, '0'), '.').'%'
-                        : '-';
-
-                      // Compute annual cost for this budget from base_cost and effort
-                      $cost = ($base_cost > 0 && $effort > 0)
-                        ? $base_cost * ($effort / 100.0)
-                        : 0.0;
-
-                      $cost_display = $cost > 0
-                        ? ' ($'.number_format($cost, 2).')'
-                        : '';
-
-                      // VIEW MODE CELL
-                      echo '<td class="data-view" id="personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_view">';
-                        echo $effort_display.$cost_display;
-                      echo '</td>';
-
-                      // EDIT MODE CELL (hidden until toggle_edit_mode is called)
-                      echo '<td class="data-edit hidden">';
-                        echo '<input id="personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_edit" ';
-                        echo '       name="personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_effort" ';
-                        echo '       type="number" min="0" max="100" step="0.1" ';
-                        echo '       placeholder="'.($effort > 0 ? $effort : 0).'" ';
-                        echo '       onfocus="highlightHeader(\'personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_edit\',true);" ';
-                        echo '       onfocusout="highlightHeader(\'personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_edit\',false);" ';
-                        echo '>';
-                        echo ' %';
-                      echo '</td>';
+                    echo '<td class="row_header">No personnel linked to this budget.</td>';
+                    for ($i = 0; $i < $length; $i++) {
+                      echo '<td>-</td>';
                     }
                   echo '</tr>';
                 }
-              } else {
-                // No personnel yet linked to this budget
+
+                // Link to separate personnel editing page (link/unlink)
+                echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">';
+                  echo '<a href="edit_budget_personnel.php?budget_id='.$budget_id.'">Edit Personnel Links</a>';
+                echo '</th></tr>';
+
+              echo '</tbody>';
+
+
+              echo '<tbody id="equipment">';
+                echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><div class="split-items">Large Equipment<button type="button" onclick="toggle_edit_mode([\'equipment\']);">Toggle Edit Mode</button></div></th></tr>';
+                  if(isset($equipment) && !empty($equipment)){
+                    foreach(array_keys($equipment) as $key){
+                      echo '<tr>';
+                      // View mode
+                      echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>';
+                      for($i = 1; $i < $length+1; $i++){
+                        $cost = isset($equipment[$key][$i]) ? $equipment[$key][$i] : 0;
+                        if($cost == "0.00" or $cost == 0){
+                          $cost = '-';
+                        } else {
+                          $cost = "$".$cost;
+                        }
+                        // View mode
+                        echo '<td class="data-view" id="equipment_'.$key.'_'.$i.'_view">'.$cost.'</td>';
+                        // Edit mode
+                        echo '<td class="data-edit hidden"><input id="equipment_'.$key.'_'.$i.'_edit" name="equipment_'.$key.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\'equipment_'.$key.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\'equipment_'.$key.'_'.$i.'_edit\',false);"></input></td>';
+                      }
+                      echo '</tr>';
+                    }
+                  }
+                echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><a href="edit_budget_equipment.php?budget_id='.$budget_id.'">Edit Equipment</a></th></tr>';
+              echo '</tbody>';
+              echo '<tbody id="travel">';
+                echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Travel</th></tr>';
                 echo '<tr>';
-                  echo '<td class="row_header">No personnel linked to this budget.</td>';
-                  for ($i = 0; $i < $length; $i++) {
-                    echo '<td>-</td>';
+                  echo '<td></td>';
+                  for($i = 0; $i < $length; $i++){
+                    echo '<td>Value '.($i+1).'</td>';
                   }
                 echo '</tr>';
-              }
-
-              // Link to separate personnel editing page (link/unlink)
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">';
-                echo '<a href="edit_budget_personnel.php?budget_id='.$budget_id.'">Edit Personnel Links</a>';
-              echo '</th></tr>';
-
-            echo '</tbody>';
-
-
-            echo '<tbody id="equipment">';
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><div class="split-items">Large Equipment<button onclick="toggle_edit_mode([\'equipment\']);">Toggle Edit Mode</button></div></th></tr>';
-                if(isset($equipment) && !empty($equipment)){
-                  foreach(array_keys($equipment) as $key){
-                    echo '<tr>';
-                    // View mode
-                    echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>';
-                    for($i = 1; $i < $length+1; $i++){
-                      $cost = isset($equipment[$key][$i]) ? $equipment[$key][$i] : 0;
-                      if($cost == "0.00" or $cost == 0){
-                        $cost = '-';
-                      } else {
-                        $cost = "$".$cost;
+                echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><a href="edit_budget_travel.php?budget_id='.$budget_id.'">Edit Travel</a></th></tr>';
+              echo '</tbody>';
+              echo '<tbody id="other_costs">';
+                echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><div class="split-items">Other Costs<button type="button" onclick="toggle_edit_mode([\'other_costs\']);">Toggle Edit Mode</button></div></th></tr>';
+                  if(isset($other_costs) && !empty($other_costs)){
+                    foreach(array_keys($other_costs) as $key){
+                      echo '<tr>';
+                      echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>'; 
+                      for($i = 1; $i < $length+1; $i++){
+                        $cost = $other_costs[$key][$i];
+                        if($cost == "0.00" or $cost == 0){
+                          $cost = '-';
+                        } else {
+                          $cost = "$".$cost;
+                        }
+                        // View mode
+                        echo '<td class="data-view" id="other_costs_'.$key.'_'.$i.'_view">'.$cost.'</td>';
+                        // Edit mode
+                        echo '<td class="data-edit hidden"><input id="other_costs_'.$key.'_'.$i.'_edit" name="other_costs_'.$key.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\'other_costs_'.$key.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\'other_costs_'.$key.'_'.$i.'_edit\',false);"></input></td>';
                       }
-                      // View mode
-                      echo '<td class="data-view" id="equipment_'.$key.'_'.$i.'_view">'.$cost.'</td>';
-                      // Edit mode
-                      echo '<td class="data-edit hidden"><input id="equipment_'.$key.'_'.$i.'_edit" name="equipment_'.$key.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\'equipment_'.$key.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\'equipment_'.$key.'_'.$i.'_edit\',false);"></input></td>';
+                      echo '</tr>';
                     }
-                    echo '</tr>';
                   }
-                }
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><a href="edit_budget_equipment.php?budget_id='.$budget_id.'">Edit Equipment</a></th></tr>';
-            echo '</tbody>';
-            echo '<tbody id="travel">';
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header">Travel</th></tr>';
-              echo '<tr>';
-                echo '<td></td>';
-                for($i = 0; $i < $length; $i++){
-                  echo '<td>Value '.($i+1).'</td>';
-                }
-              echo '</tr>';
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><a href="edit_budget_travel.php?budget_id='.$budget_id.'">Edit Travel</a></th></tr>';
-            echo '</tbody>';
-            echo '<tbody id="other_costs">';
-              echo '<tr><th colspan="'.$table_width.'" class="table_subsection_header"><div class="split-items">Other Costs<button onclick="toggle_edit_mode([\'other_costs\']);">Toggle Edit Mode</button></div></th></tr>';
-                if(isset($other_costs) && !empty($other_costs)){
-                  foreach(array_keys($other_costs) as $key){
-                    echo '<tr>';
-                    echo '<td class="row_header">'.ucfirst(str_replace("_"," ",$key)).'</td>'; 
-                    for($i = 1; $i < $length+1; $i++){
-                      $cost = $other_costs[$key][$i];
-                      if($cost == "0.00" or $cost == 0){
-                        $cost = '-';
-                      } else {
-                        $cost = "$".$cost;
-                      }
-                      // View mode
-                      echo '<td class="data-view" id="other_costs_'.$key.'_'.$i.'_view">'.$cost.'</td>';
-                      // Edit mode
-                      echo '<td class="data-edit hidden"><input id="other_costs_'.$key.'_'.$i.'_edit" name="other_costs_'.$key.'_'.$i.'_edit" type="text" placeholder="'.$cost.'" onfocus="highlightHeader(\'other_costs_'.$key.'_'.$i.'_edit\',true);" onfocusout="highlightHeader(\'other_costs_'.$key.'_'.$i.'_edit\',false);"></input></td>';
-                    }
-                    echo '</tr>';
-                  }
-                }
-            echo '</tbody>';
-          echo '</table>';
+              echo '</tbody>';
+            echo '</table>';
+
+            // Save button for personnel effort
+            echo '<div style="margin-top:1rem;">';
+              echo '<button type="submit" name="save_personnel_effort" class="styled-button submit-button">Save Personnel Effort</button>';
+            echo '</div>';
+
+          echo '</form>';
         } else {
           echo '<a href="./dashboard.php">Return to dashboard.</a>';
         }
+
         if(isset($message) && !empty($message)){
           echo '<script>submissionMessage("'.$message.'",'.$error_type.');</script>';
         }

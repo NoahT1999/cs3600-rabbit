@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Dec 11, 2025 at 09:28 PM
+-- Generation Time: Dec 12, 2025 at 01:19 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -179,6 +179,35 @@ CREATE TABLE `budget_personnel_effort` (
   `effort_percent` decimal(5,2) DEFAULT 0.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `budget_personnel_effort`
+--
+
+INSERT INTO `budget_personnel_effort` (`budget_id`, `personnel_type`, `personnel_id`, `year`, `effort_percent`) VALUES
+(14, 'staff', '1', 1, 0.00),
+(14, 'staff', '1', 2, 0.00),
+(14, 'staff', '1', 3, 0.00),
+(14, 'staff', '1', 4, 0.00),
+(14, 'staff', '1', 5, 0.00),
+(14, 'staff', '344568', 1, 3.00),
+(14, 'staff', '344568', 2, 0.00),
+(14, 'staff', '344568', 3, 0.00),
+(14, 'staff', '344568', 4, 0.00),
+(14, 'staff', '344568', 5, 0.00);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `budget_personnel_growth`
+--
+
+CREATE TABLE `budget_personnel_growth` (
+  `budget_id` int(11) NOT NULL,
+  `personnel_type` varchar(10) NOT NULL,
+  `personnel_id` varchar(20) NOT NULL,
+  `growth_rate_percent` decimal(5,2) NOT NULL DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 -- --------------------------------------------------------
 
 --
@@ -340,6 +369,12 @@ ALTER TABLE `budget_personnel_effort`
   ADD PRIMARY KEY (`budget_id`,`personnel_type`,`personnel_id`,`year`);
 
 --
+-- Indexes for table `budget_personnel_growth`
+--
+ALTER TABLE `budget_personnel_growth`
+  ADD PRIMARY KEY (`budget_id`,`personnel_type`,`personnel_id`);
+
+--
 -- Indexes for table `domestic_travel_per_diem`
 --
 ALTER TABLE `domestic_travel_per_diem`
@@ -433,6 +468,12 @@ ALTER TABLE `budget_personnel`
 --
 ALTER TABLE `budget_personnel_effort`
   ADD CONSTRAINT `bpe_budget_fk` FOREIGN KEY (`budget_id`) REFERENCES `budget` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `budget_personnel_growth`
+--
+ALTER TABLE `budget_personnel_growth`
+  ADD CONSTRAINT `bpg_budget_fk` FOREIGN KEY (`budget_id`) REFERENCES `budget` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
