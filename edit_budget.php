@@ -126,9 +126,9 @@ $personnel_growth = []; // annual growth rate per person
 
 // === Fringe & F&A rates (from FY23-24 sheet) ===
 const FRINGE_RATE_FACULTY      = 0.31;   // 31.0%
-const FRINGE_RATE_PROF_STAFF   = 0.413;  // 41.3%
+const FRINGE_RATE_PROF_STAFF   = 0.40;  // 40%
 const FRINGE_RATE_GRAS_UGRADS  = 0.025;  // 2.5%
-const FRINGE_RATE_TEMP_HELP    = 0.083;  // 8.3%
+const FRINGE_RATE_TEMP_HELP    = 0.08;  // 8%
 
 // In your schema we just have "staff" & "student":
 const FRINGE_RATE_STAFF   = FRINGE_RATE_PROF_STAFF;
@@ -693,118 +693,143 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_equipment'])){
                   echo '</div>';
                 echo '</th></tr>';
                 if (!empty($personnel)) {
-                  foreach ($personnel as $p) {
-                    $name = ucfirst($p['first_name']).' '.ucfirst($p['last_name']);
-                    $key  = $p['type'].'|'.$p['id'];
+                foreach ($personnel as $p) {
+                  $name = ucfirst($p['first_name']).' '.ucfirst($p['last_name']);
+                  $key  = $p['type'].'|'.$p['id'];
 
-                    // Determine base annual cost (salary or tuition) for display and cost calc
-                    $base_cost = 0;
-                    $extra = '';
-                    if ($p['type'] === 'staff') {
-                      $base_cost = isset($p['salary']) ? (float)$p['salary'] : 0;
+                  // Base annual cost
+                  $base_cost = 0.0;
+                  $base_label = '';
+                  if ($p['type'] === 'staff') {
+                    $base_cost = isset($p['salary']) ? (float)$p['salary'] : 0.0;
+                    $base_label = 'Salary';
+                  } else {
+                    $base_cost = isset($p['tuition']) ? (float)$p['tuition'] : 0.0;
+                    $base_label = 'Tuition';
+                  }
+
+                  // Growth rate (annual %)
+                  $growth_rate = isset($personnel_growth[$key]) ? (float)$personnel_growth[$key] : 0.0;
+
+                  // ---- Row 0: Person header row (name + base + growth) ----
+                  echo '<tr class="personnel-person-header">';
+                    echo '<td class="row_header">';
+                      echo $name.' ('.ucfirst($p['type']).' - '.$p['id'].')';
                       if ($base_cost > 0) {
-                        $extra = ' | Salary: $'.number_format($base_cost, 2);
+                        echo '<div style="font-weight:normal; font-size:0.9em; margin-top:0.25rem;">';
+                          echo $base_label.': $'.number_format($base_cost, 2).' | Growth: '
+                              .rtrim(rtrim((string)$growth_rate, '0'), '.').'%';
+                        echo '</div>';
                       }
-                    } else { // student
-                      $base_cost = isset($p['tuition']) ? (float)$p['tuition'] : 0;
-                      if ($base_cost > 0) {
-                        $extra = ' | Tuition: $'.number_format($base_cost, 2);
+                    echo '</td>';
+
+                    // Fill years with blanks (keeps table aligned)
+                    for ($year = 1; $year <= $length; $year++) {
+                      echo '<td class="data-view"> </td>';
+                    }
+                  echo '</tr>';
+
+                  // Helper: compute all values for a given year
+                  $calc_for_year = function($year) use ($base_cost, $growth_rate, $p, $personnel_effort, $key) {
+                    $effort = isset($personnel_effort[$key][$year]) ? (float)$personnel_effort[$key][$year] : 0.0;
+
+                    $grown_base = $base_cost;
+                    if ($base_cost > 0 && $growth_rate != 0.0) {
+                      $factor = 1 + ($growth_rate / 100.0);
+                      $grown_base = $base_cost * pow($factor, $year - 1);
+                    }
+
+                    $salary_cost = ($grown_base > 0 && $effort > 0) ? $grown_base * ($effort / 100.0) : 0.0;
+
+                    $fringe_cost = 0.0;
+                    if ($salary_cost > 0) {
+                      if ($p['type'] === 'staff') {
+                        $fringe_cost = $salary_cost * FRINGE_RATE_STAFF;
+                      } else {
+                        $fringe_cost = $salary_cost * FRINGE_RATE_STUDENT;
                       }
                     }
 
-                    $label = $name.' ('.ucfirst($p['type']).' - '.$p['id'].')'.$extra;
+                    $total_personnel_direct = $salary_cost + $fringe_cost;
 
-                    echo '<tr>';
-                      // Row header = person name + type + id + salary/tuition
-                      echo '<td class="row_header">'.$label.'</td>';
+                    return [$effort, $grown_base, $salary_cost, $fringe_cost, $total_personnel_direct];
+                  };
 
-                      // One cell per year; we use years 1..$length like other tables
-                      for ($year = 1; $year <= $length; $year++) {
-                        $effort = isset($personnel_effort[$key][$year])
-                                  ? (float)$personnel_effort[$key][$year]
-                                  : 0.0;
+                  // ---- Row 1: Effort % (editable) ----
+                  echo '<tr class="personnel-effort-row">';
+                    echo '<td class="row_header">Effort %</td>';
+                    for ($year = 1; $year <= $length; $year++) {
+                      [$effort] = $calc_for_year($year);
 
-                        // Nicely formatted effort (e.g., "25%" or "-")
-                        $effort_display = $effort > 0
-                          ? rtrim(rtrim((string)$effort, '0'), '.').'%'
-                          : '-';
+                      $effort_display = ((float)$effort > 0) ? ((int)round((float)$effort)).'%' : '-';
+                      // view cell
+                      echo '<td class="data-view" id="personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_effort_view">';
+                        echo $effort_display;
+                      echo '</td>';
 
-                        // Apply growth rate to base salary/tuition
-                        $growth_rate = isset($personnel_growth[$key])
-                          ? (float)$personnel_growth[$key]
-                          : 0.0;
+                      // edit cell
+                      echo '<td class="data-edit hidden">';
 
-                        $grown_base = $base_cost;
-                        if ($base_cost > 0 && $growth_rate != 0.0) {
-                          $factor = 1 + ($growth_rate / 100.0);
-                          // Year 1 => base, Year 2 => base * factor, Year 3 => base * factor^2, ...
-                          $grown_base = $base_cost * pow($factor, $year - 1);
+                        $maxEffort = ($p['type'] === 'student') ? 50 : 100;
+                        $element_id = 'personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_edit';
+                        $element_name = 'personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_effort';
+
+                        echo '<select id="'.$element_id.'" name="'.$element_name.'" ';
+                        echo '        onfocus="highlightHeader(\''.$element_id.'\',true);" ';
+                        echo '        onfocusout="highlightHeader(\''.$element_id.'\',false);">';
+
+                        for ($percent = 0; $percent <= $maxEffort; $percent++) {
+                          $selected = ((int)round($effort) === $percent) ? ' selected' : '';
+                          echo '<option value="'.$percent.'"'.$selected.'>'.$percent.'%</option>';
                         }
 
-                        // Base salary/tuition charged to this budget for that year (direct salary)
-                        $salary_cost = ($grown_base > 0 && $effort > 0)
-                          ? $grown_base * ($effort / 100.0)
-                          : 0.0;
+                        echo '</select>';
 
-                        // Fringe benefits: apply to salaried personnel using university rates
-                        $fringe_cost = 0.0;
-                        if ($salary_cost > 0) {
-                          if ($p['type'] === 'staff') {
-                            // Staff get fringe
-                            $fringe_cost = $salary_cost * FRINGE_RATE_STAFF;
-                          } else {
-                            // Students: only apply if your syllabus says they also get fringe
-                            $fringe_cost = $salary_cost * FRINGE_RATE_STUDENT;
-                          }
-                        }
+                      echo '</td>';
+                    }
+                  echo '</tr>';
 
-                        // Total direct personnel cost for this person in this year (salary + fringe)
-                        $total_personnel_direct = $salary_cost + $fringe_cost;
-                        // Add into per-year personnel total
-                        $year_personnel_totals[$year] += $total_personnel_direct;
+                  // ---- Row 2: Grown Base ----
+                  echo '<tr class="personnel-grownbase-row">';
+                    echo '<td class="row_header">'.$base_label.' (after growth)</td>';
+                    for ($year = 1; $year <= $length; $year++) {
+                      [, $grown_base] = $calc_for_year($year);
+                      echo '<td class="data-view">'.($grown_base > 0 ? '$'.number_format($grown_base, 2) : '-').'</td>';
+                    }
+                  echo '</tr>';
 
-                        // What we show in the cell
-                        if ($total_personnel_direct > 0) {
-                          // Simple version: show total only
-                          $cost_display = ' ($'.number_format($total_personnel_direct, 2).')';
+                  // ---- Row 3: Salary Cost ----
+                  echo '<tr class="personnel-salarycost-row">';
+                    echo '<td class="row_header">'.$base_label.' × Effort</td>';
+                    for ($year = 1; $year <= $length; $year++) {
+                      [, , $salary_cost] = $calc_for_year($year);
+                      echo '<td class="data-view">'.($salary_cost > 0 ? '$'.number_format($salary_cost, 2) : '-').'</td>';
+                    }
+                  echo '</tr>';
 
-                          // If you want to see the breakdown in the UI, use this instead:
-                          // $cost_display = ' ($'.number_format($salary_cost, 2).' salary + $'
-                          //                  .number_format($fringe_cost, 2).' fringe)';
-                        } else {
-                          $cost_display = '';
-                        }
+                  // ---- Row 4: Fringe ----
+                  echo '<tr class="personnel-fringe-row">';
+                    echo '<td class="row_header">Fringe</td>';
+                    for ($year = 1; $year <= $length; $year++) {
+                      [, , , $fringe_cost] = $calc_for_year($year);
+                      echo '<td class="data-view">'.($fringe_cost > 0 ? '$'.number_format($fringe_cost, 2) : '-').'</td>';
+                    }
+                  echo '</tr>';
 
-                        // VIEW MODE CELL
-                        echo '<td class="data-view" id="personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_view">';
-                          echo $effort_display.$cost_display;
-                        echo '</td>';
+                  // ---- Row 5: Total Direct (salary + fringe) ----
+                  echo '<tr class="personnel-total-row">';
+                    echo '<td class="row_header">Total Personnel Direct</td>';
+                    for ($year = 1; $year <= $length; $year++) {
+                      [, , , , $total_personnel_direct] = $calc_for_year($year);
 
-                        // EDIT MODE CELL (hidden until toggle_edit_mode is called)
-                        echo '<td class="data-edit hidden">';
+                      // IMPORTANT: keep your totals logic EXACTLY once per person-year
+                      $year_personnel_totals[$year] += $total_personnel_direct;
 
-                          // cap by type: students 50% max FTE, staff up to 100% (change if needed)
-                          $maxEffort = ($p['type'] === 'student') ? 50 : 100;
-
-                          $element_id = 'personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_edit';
-                          $element_name = 'personnel_'.$p['type'].'_'.$p['id'].'_'.$year.'_effort';
-
-                          echo '<select id="'.$element_id.'" name="'.$element_name.'" ';
-                          echo '        onfocus="highlightHeader(\''.$element_id.'\',true);" ';
-                          echo '        onfocusout="highlightHeader(\''.$element_id.'\',false);">';
-
-                          for ($percent = 0; $percent <= $maxEffort; $percent++) {
-                            $selected = ((int)round($effort) === $percent) ? ' selected' : '';
-                            echo '<option value="'.$percent.'"'.$selected.'>'.$percent.'%</option>';
-                          }
-
-                          echo '</select>';
-
-                        echo '</td>';
-                      }
-                    echo '</tr>';
-                  }
-                } else {
+                      echo '<td class="data-view">'.($total_personnel_direct > 0 ? '$'.number_format($total_personnel_direct, 2) : '-').'</td>';
+                    }
+                  echo '</tr>';
+                }
+               } else {
                   // No personnel yet linked to this budget
                   echo '<tr>';
                     echo '<td class="row_header">No personnel linked to this budget.</td>';
