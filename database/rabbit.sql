@@ -2,10 +2,10 @@
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
--- Host: localhost
--- Generation Time: Dec 11, 2025 at 09:48 PM
+-- Host: 127.0.0.1
+-- Generation Time: Dec 12, 2025 at 07:31 AM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- PHP Version: 8.0.30
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -85,7 +85,7 @@ CREATE TABLE `budget_equipment` (
 INSERT INTO `budget_equipment` (`budget_id`, `equipment_id`, `year`, `cost`) VALUES
 (14, 1, 1, 321.00),
 (14, 2, 1, 0.00),
-(14, 2, 2, 0.00),
+(14, 2, 2, 24.00),
 (14, 2, 3, 123.00),
 (14, 2, 4, 0.00),
 (14, 2, 5, 0.00),
@@ -124,7 +124,7 @@ CREATE TABLE `budget_other_costs` (
 --
 
 INSERT INTO `budget_other_costs` (`id`, `year`, `materials_and_supplies`, `small_equipment`, `publication`, `computer_services`, `software`, `facility_fees`, `conference_registration`, `other`) VALUES
-(14, 1, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.73, 12312345.00),
+(14, 1, 60.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.73, 12312345.00),
 (14, 2, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
 (14, 3, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
 (14, 4, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00),
@@ -184,7 +184,7 @@ CREATE TABLE `budget_personnel_effort` (
 --
 
 INSERT INTO `budget_personnel_effort` (`budget_id`, `personnel_type`, `personnel_id`, `year`, `effort_percent`) VALUES
-(14, 'staff', '1', 1, 0.00),
+(14, 'staff', '1', 1, 5.00),
 (14, 'staff', '1', 2, 0.00),
 (14, 'staff', '1', 3, 0.00),
 (14, 'staff', '1', 4, 0.00),
@@ -192,7 +192,7 @@ INSERT INTO `budget_personnel_effort` (`budget_id`, `personnel_type`, `personnel
 (14, 'staff', '344568', 1, 3.00),
 (14, 'staff', '344568', 2, 0.00),
 (14, 'staff', '344568', 3, 0.00),
-(14, 'staff', '344568', 4, 0.00),
+(14, 'staff', '344568', 4, 4.00),
 (14, 'staff', '344568', 5, 0.00);
 
 -- --------------------------------------------------------
@@ -208,6 +208,13 @@ CREATE TABLE `budget_personnel_growth` (
   `growth_rate_percent` decimal(5,2) NOT NULL DEFAULT 0.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `budget_personnel_growth`
+--
+
+INSERT INTO `budget_personnel_growth` (`budget_id`, `personnel_type`, `personnel_id`, `growth_rate_percent`) VALUES
+(14, 'staff', '344568', 0.70);
+
 -- --------------------------------------------------------
 
 --
@@ -220,17 +227,6 @@ CREATE TABLE `budget_travel` (
   `domestic` decimal(10,2) DEFAULT 0.00,
   `international` decimal(10,2) DEFAULT 0.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `budget_travel`
---
-
-INSERT INTO `budget_travel` (`budget_id`, `year`, `domestic`, `international`) VALUES
-(14, 1, 0.00, 0.00),
-(14, 2, 0.00, 0.00),
-(14, 3, 0.00, 0.00),
-(14, 4, 0.00, 0.00),
-(14, 5, 0.00, 0.00);
 
 -- --------------------------------------------------------
 
@@ -393,6 +389,12 @@ ALTER TABLE `budget_personnel_effort`
   ADD PRIMARY KEY (`budget_id`,`personnel_type`,`personnel_id`,`year`);
 
 --
+-- Indexes for table `budget_personnel_growth`
+--
+ALTER TABLE `budget_personnel_growth`
+  ADD PRIMARY KEY (`budget_id`,`personnel_type`,`personnel_id`);
+
+--
 -- Indexes for table `budget_travel`
 --
 ALTER TABLE `budget_travel`
@@ -498,6 +500,12 @@ ALTER TABLE `budget_personnel_effort`
 --
 ALTER TABLE `budget_personnel_growth`
   ADD CONSTRAINT `bpg_budget_fk` FOREIGN KEY (`budget_id`) REFERENCES `budget` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `budget_travel`
+--
+ALTER TABLE `budget_travel`
+  ADD CONSTRAINT `budget_travel_budget_fk` FOREIGN KEY (`budget_id`) REFERENCES `budget` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
